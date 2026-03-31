@@ -1,0 +1,28 @@
+import { Module } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
+import { WebhookController } from './webhook.controller';
+import { WebhookService } from './webhook.service';
+import { WebhookConsumer } from './webhook.consumer';
+import {
+  DeliveryStatus,
+  DeliveryStatusSchema,
+} from './schemas/delivery-status.schema';
+import { Message, MessageSchema } from '../messaging/schemas/message.schema';
+import {
+  MessageSession,
+  MessageSessionSchema,
+} from '../messaging/schemas/message-session.schema';
+
+@Module({
+  imports: [
+    MongooseModule.forFeature([
+      { name: DeliveryStatus.name, schema: DeliveryStatusSchema },
+      { name: Message.name, schema: MessageSchema },
+      { name: MessageSession.name, schema: MessageSessionSchema },
+    ]),
+  ],
+  controllers: [WebhookController],
+  providers: [WebhookService, WebhookConsumer],
+  exports: [WebhookService],
+})
+export class WebhookModule { }
