@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   SQSClient,
@@ -16,7 +21,9 @@ interface HandlerEntry {
 }
 
 @Injectable()
-export class SqsConsumerService implements IQueueConsumer, OnModuleInit, OnModuleDestroy {
+export class SqsConsumerService
+  implements IQueueConsumer, OnModuleInit, OnModuleDestroy
+{
   private readonly logger = new Logger(SqsConsumerService.name);
   private readonly client: SQSClient;
   private readonly handlers: HandlerEntry[] = [];
@@ -34,8 +41,12 @@ export class SqsConsumerService implements IQueueConsumer, OnModuleInit, OnModul
     });
 
     this.queueUrls = {
-      [QUEUE_NAMES.MESSAGE_SEND]: this.configService.get<string>('aws.sqs.messageQueueUrl')!,
-      [QUEUE_NAMES.WEBHOOK_PROCESS]: this.configService.get<string>('aws.sqs.webhookQueueUrl')!,
+      [QUEUE_NAMES.MESSAGE_SEND]: this.configService.get<string>(
+        'aws.sqs.messageQueueUrl',
+      )!,
+      [QUEUE_NAMES.WEBHOOK_PROCESS]: this.configService.get<string>(
+        'aws.sqs.webhookQueueUrl',
+      )!,
     };
   }
 
@@ -46,11 +57,15 @@ export class SqsConsumerService implements IQueueConsumer, OnModuleInit, OnModul
   ): void {
     const queueUrl = this.queueUrls[queueName];
     if (!queueUrl) {
-      this.logger.warn(`No SQS URL for queue "${queueName}", skipping handler registration`);
+      this.logger.warn(
+        `No SQS URL for queue "${queueName}", skipping handler registration`,
+      );
       return;
     }
     this.handlers.push({ queueName, queueUrl, handler, concurrency });
-    this.logger.log(`Registered SQS handler for ${queueName} (concurrency: ${concurrency})`);
+    this.logger.log(
+      `Registered SQS handler for ${queueName} (concurrency: ${concurrency})`,
+    );
   }
 
   async onModuleInit() {
@@ -67,7 +82,9 @@ export class SqsConsumerService implements IQueueConsumer, OnModuleInit, OnModul
       }
     }
 
-    this.logger.log('SQS consumers started');
+    return await Promise.allSettled(this.pollingPromises).then(() => {
+      this.logger.log('SQS consumers started');
+    });
   }
 
   async stop(): Promise<void> {
@@ -117,7 +134,9 @@ export class SqsConsumerService implements IQueueConsumer, OnModuleInit, OnModul
         }
       } catch (error) {
         if (this.running) {
-          this.logger.error(`SQS polling error for ${entry.queueName}: ${(error as Error).message}`);
+          this.logger.error(
+            `SQS polling error for ${entry.queueName}: ${(error as Error).message}`,
+          );
           await this.sleep(5000); // Back off on error
         }
       }

@@ -38,16 +38,22 @@ export class BullmqConsumerService implements IQueueConsumer, OnModuleDestroy {
     });
 
     worker.on('failed', (job, err) => {
-      this.logger.error(`BullMQ job ${job?.id} failed on ${queueName}: ${err.message}`);
+      this.logger.error(
+        `BullMQ job ${job?.id} failed on ${queueName}: ${err.message}`,
+      );
     });
 
     this.workers.push(worker);
-    this.logger.log(`Registered BullMQ worker for ${queueName} (concurrency: ${concurrency})`);
+    this.logger.log(
+      `Registered BullMQ worker for ${queueName} (concurrency: ${concurrency})`,
+    );
   }
 
   async start(): Promise<void> {
     // BullMQ workers start automatically on creation
-    this.logger.log('BullMQ consumers active');
+    return Promise.resolve().then(() => {
+      this.logger.log('BullMQ consumers active');
+    });
   }
 
   async stop(): Promise<void> {
