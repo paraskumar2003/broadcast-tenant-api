@@ -7,6 +7,7 @@ import {
   Res,
   HttpCode,
   Logger,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
@@ -21,7 +22,7 @@ export class WebhookController {
   constructor(
     private readonly webhookService: WebhookService,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   /**
    * Meta webhook verification (GET).
@@ -58,5 +59,24 @@ export class WebhookController {
   async receive(@Body() body: any) {
     await this.webhookService.enqueueWebhook(body);
     return { statusCode: 200, message: 'Received', success: true };
+  }
+
+  /**
+ * Verify webhook with Meta (GET).
+ */
+  @Get()
+  @ApiOperation({ summary: 'Verify Meta webhook' })
+  verifyWebhook(
+    @Query('hub.mode') mode: string,
+    @Query('hub.verify_token') token: string,
+    @Query('hub.challenge') challenge: string,
+  ) {
+    const VERIFY_TOKEN = this.configService.get<string>('webhook.verifyToken');
+
+    if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+      return challenge;
+    }
+
+    throw new ForbiddenException('Verification token mismatch');
   }
 }

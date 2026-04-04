@@ -12,4 +12,5 @@ export declare class WebhookController {
         message: string;
         success: boolean;
     }>;
+    verifyWebhook(mode: string, token: string, challenge: string): string;
 }

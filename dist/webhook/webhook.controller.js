@@ -39,6 +39,13 @@ let WebhookController = WebhookController_1 = class WebhookController {
         await this.webhookService.enqueueWebhook(body);
         return { statusCode: 200, message: 'Received', success: true };
     }
+    verifyWebhook(mode, token, challenge) {
+        const VERIFY_TOKEN = this.configService.get('webhook.verifyToken');
+        if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+            return challenge;
+        }
+        throw new common_1.ForbiddenException('Verification token mismatch');
+    }
 };
 exports.WebhookController = WebhookController;
 __decorate([
@@ -64,6 +71,16 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], WebhookController.prototype, "receive", null);
+__decorate([
+    (0, common_1.Get)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Verify Meta webhook' }),
+    __param(0, (0, common_1.Query)('hub.mode')),
+    __param(1, (0, common_1.Query)('hub.verify_token')),
+    __param(2, (0, common_1.Query)('hub.challenge')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:returntype", void 0)
+], WebhookController.prototype, "verifyWebhook", null);
 exports.WebhookController = WebhookController = WebhookController_1 = __decorate([
     (0, swagger_1.ApiTags)('Webhook'),
     (0, common_1.Controller)('webhook'),
