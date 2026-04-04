@@ -21,6 +21,7 @@ const webhook_module_1 = require("./webhook/webhook.module");
 const reporting_module_1 = require("./reporting/reporting.module");
 const upload_module_1 = require("./upload/upload.module");
 const tagging_module_1 = require("./tagging/tagging.module");
+const contact_module_1 = require("./contact/contact.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -44,6 +45,7 @@ exports.AppModule = AppModule = __decorate([
             reporting_module_1.ReportingModule,
             upload_module_1.UploadModule,
             tagging_module_1.TaggingModule,
+            contact_module_1.ContactModule,
         ],
     })
 ], AppModule);

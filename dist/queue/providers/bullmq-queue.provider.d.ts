@@ -1,4 +1,5 @@
 import { ConfigService } from '@nestjs/config';
+import { Queue } from 'bullmq';
 import type { IQueueService, QueueJobOptions, QueueJobData } from '../queue.interface';
 export declare class BullmqQueueProvider implements IQueueService {
     private readonly configService;
@@ -9,4 +10,5 @@ export declare class BullmqQueueProvider implements IQueueService {
     publishBulk<T = any>(queueName: string, items: QueueJobData<T>[]): Promise<string[]>;
     private getQueue;
     onModuleDestroy(): Promise<void>;
+    getQueues(): Queue[];
 }

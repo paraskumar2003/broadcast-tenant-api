@@ -15,22 +15,21 @@ const tag_schema_1 = require("./schemas/tag.schema");
 const upload_tagging_schema_1 = require("./schemas/upload-tagging.schema");
 const template_tagging_schema_1 = require("./schemas/template-tagging.schema");
 const contact_tagging_schema_1 = require("./schemas/contact-tagging.schema");
+const TAGGING_MODELS = mongoose_1.MongooseModule.forFeature([
+    { name: tag_schema_1.Tag.name, schema: tag_schema_1.TagSchema },
+    { name: upload_tagging_schema_1.UploadTagging.name, schema: upload_tagging_schema_1.UploadTaggingSchema },
+    { name: template_tagging_schema_1.TemplateTagging.name, schema: template_tagging_schema_1.TemplateTaggingSchema },
+    { name: contact_tagging_schema_1.ContactTagging.name, schema: contact_tagging_schema_1.ContactTaggingSchema },
+]);
 let TaggingModule = class TaggingModule {
 };
 exports.TaggingModule = TaggingModule;
 exports.TaggingModule = TaggingModule = __decorate([
     (0, common_1.Module)({
-        imports: [
-            mongoose_1.MongooseModule.forFeature([
-                { name: tag_schema_1.Tag.name, schema: tag_schema_1.TagSchema },
-                { name: upload_tagging_schema_1.UploadTagging.name, schema: upload_tagging_schema_1.UploadTaggingSchema },
-                { name: template_tagging_schema_1.TemplateTagging.name, schema: template_tagging_schema_1.TemplateTaggingSchema },
-                { name: contact_tagging_schema_1.ContactTagging.name, schema: contact_tagging_schema_1.ContactTaggingSchema },
-            ]),
-        ],
+        imports: [TAGGING_MODELS],
         providers: [tagging_service_1.TaggingService],
         controllers: [tagging_controller_1.TaggingController],
-        exports: [tagging_service_1.TaggingService],
+        exports: [tagging_service_1.TaggingService, TAGGING_MODELS],
     })
 ], TaggingModule);
 //# sourceMappingURL=tagging.module.js.map

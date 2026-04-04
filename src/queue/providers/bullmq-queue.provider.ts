@@ -75,4 +75,8 @@ export class BullmqQueueProvider implements IQueueService {
       await queue.close();
     }
   }
+
+  getQueues(): Queue[] {
+    return Array.from(this.queues.values());
+  }
 }

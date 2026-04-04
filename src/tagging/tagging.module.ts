@@ -7,17 +7,17 @@ import { UploadTagging, UploadTaggingSchema } from './schemas/upload-tagging.sch
 import { TemplateTagging, TemplateTaggingSchema } from './schemas/template-tagging.schema';
 import { ContactTagging, ContactTaggingSchema } from './schemas/contact-tagging.schema';
 
+const TAGGING_MODELS = MongooseModule.forFeature([
+  { name: Tag.name, schema: TagSchema },
+  { name: UploadTagging.name, schema: UploadTaggingSchema },
+  { name: TemplateTagging.name, schema: TemplateTaggingSchema },
+  { name: ContactTagging.name, schema: ContactTaggingSchema },
+]);
+
 @Module({
-  imports: [
-    MongooseModule.forFeature([
-      { name: Tag.name, schema: TagSchema },
-      { name: UploadTagging.name, schema: UploadTaggingSchema },
-      { name: TemplateTagging.name, schema: TemplateTaggingSchema },
-      { name: ContactTagging.name, schema: ContactTaggingSchema },
-    ]),
-  ],
+  imports: [TAGGING_MODELS],
   providers: [TaggingService],
   controllers: [TaggingController],
-  exports: [TaggingService],
+  exports: [TaggingService, TAGGING_MODELS],
 })
 export class TaggingModule { }

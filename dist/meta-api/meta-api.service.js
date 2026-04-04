@@ -77,7 +77,8 @@ let MetaApiService = MetaApiService_1 = class MetaApiService {
         catch (error) {
             const errData = error.response?.data?.error || error.response?.data || {};
             this.logger.error(`Failed to create template: ${errData.message || error.message}`);
-            throw new common_1.HttpException(errData || { message: error.message }, error.response?.status || common_1.HttpStatus.BAD_GATEWAY);
+            console.log(errData, error.stack, payload);
+            throw new common_1.HttpException(errData.error_user_msg || error.message, error.response?.status || common_1.HttpStatus.BAD_GATEWAY);
         }
     }
     async fetchTemplateById(templateId, accessToken) {

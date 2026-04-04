@@ -35,4 +35,4 @@ import { BullmqConsumerService } from './consumers/bullmq-consumer.service';
   ],
   exports: [QUEUE_SERVICE, QUEUE_CONSUMER],
 })
-export class QueueModule {}
+export class QueueModule { }

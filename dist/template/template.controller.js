@@ -61,7 +61,9 @@ __decorate([
 __decorate([
     (0, common_1.Post)('create'),
     (0, roles_decorator_1.Roles)(user_schema_1.UserRole.MASTER, user_schema_1.UserRole.SUPER),
-    (0, swagger_1.ApiOperation)({ summary: 'Create a new WhatsApp message template (Master/Super only)' }),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Create a new WhatsApp message template (Master/Super only)',
+    }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [template_dto_1.CreateTemplateDto]),

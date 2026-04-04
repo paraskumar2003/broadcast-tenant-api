@@ -4,10 +4,26 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { createBullBoardServer } from './bull-board';
+import { BullmqQueueProvider } from './queue/providers/bullmq-queue.provider';
+import { QUEUE_SERVICE } from './queue/queue.interface';
+import { Queue } from 'bullmq';
+
+
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const logger = new Logger('Bootstrap');
+
+  const queueProvider = app.get(QUEUE_SERVICE);
+  let queues: Queue[] = [];
+  if (queueProvider instanceof BullmqQueueProvider) {
+    queues = queueProvider.getQueues();
+  }
+
+  const serverAdapter = createBullBoardServer(queues);
+
+  app.use('/admin/queues', serverAdapter.getRouter());
 
   // Global prefix
   app.setGlobalPrefix('api/v1');

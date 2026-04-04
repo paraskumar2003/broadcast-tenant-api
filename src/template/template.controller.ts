@@ -13,7 +13,7 @@ import { TemplateDto, CreateTemplateDto } from './dto/template.dto';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('templates')
 export class TemplateController {
-  constructor(private readonly templateService: TemplateService) { }
+  constructor(private readonly templateService: TemplateService) {}
 
   @Post('list')
   @ApiOperation({ summary: 'Fetch all WhatsApp templates for a project' })
@@ -24,7 +24,9 @@ export class TemplateController {
 
   @Post('detail')
   @ApiOperation({ summary: 'Fetch template details by ID' })
-  async fetchTemplateDetail(@Body() body: { templateId: string; projectConfigId: string }) {
+  async fetchTemplateDetail(
+    @Body() body: { templateId: string; projectConfigId: string },
+  ) {
     const data = await this.templateService.fetchTemplateById(
       body.templateId,
       body.projectConfigId,
@@ -34,10 +36,15 @@ export class TemplateController {
 
   @Post('create')
   @Roles(UserRole.MASTER, UserRole.SUPER)
-  @ApiOperation({ summary: 'Create a new WhatsApp message template (Master/Super only)' })
+  @ApiOperation({
+    summary: 'Create a new WhatsApp message template (Master/Super only)',
+  })
   async createTemplate(@Body() dto: CreateTemplateDto) {
     const { projectId, ...templatePayload } = dto;
-    const data = await this.templateService.createTemplate(projectId, templatePayload);
+    const data = await this.templateService.createTemplate(
+      projectId,
+      templatePayload,
+    );
     return ApiResponseDto.success('Template created', data);
   }
 }

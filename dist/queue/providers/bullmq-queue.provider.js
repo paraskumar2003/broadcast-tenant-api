@@ -73,6 +73,9 @@ let BullmqQueueProvider = BullmqQueueProvider_1 = class BullmqQueueProvider {
             await queue.close();
         }
     }
+    getQueues() {
+        return Array.from(this.queues.values());
+    }
 };
 exports.BullmqQueueProvider = BullmqQueueProvider;
 exports.BullmqQueueProvider = BullmqQueueProvider = BullmqQueueProvider_1 = __decorate([

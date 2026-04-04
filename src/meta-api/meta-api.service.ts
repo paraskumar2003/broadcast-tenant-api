@@ -89,7 +89,10 @@ export class MetaApiService {
       const { data } = await firstValueFrom(this.httpService.get(url));
       return data.data || [];
     } catch (error: any) {
-      this.logger.error(`Failed to fetch templates for WABA ${wabaId}`, error.message);
+      this.logger.error(
+        `Failed to fetch templates for WABA ${wabaId}`,
+        error.message,
+      );
       throw new HttpException(
         `Failed to fetch templates: ${error.response?.data?.error?.message || error.message}`,
         HttpStatus.BAD_GATEWAY,
@@ -100,7 +103,11 @@ export class MetaApiService {
   /**
    * Create a new message template on a WABA.
    */
-  async createTemplate(wabaId: string, accessToken: string, payload: any): Promise<any> {
+  async createTemplate(
+    wabaId: string,
+    accessToken: string,
+    payload: any,
+  ): Promise<any> {
     const url = `${this.baseUrl}/${this.apiVersion}/${wabaId}/message_templates`;
 
     try {
@@ -117,9 +124,12 @@ export class MetaApiService {
       return data;
     } catch (error: any) {
       const errData = error.response?.data?.error || error.response?.data || {};
-      this.logger.error(`Failed to create template: ${errData.message || error.message}`);
+      this.logger.error(
+        `Failed to create template: ${errData.message || error.message}`,
+      );
+      console.log(errData, error.stack, payload);
       throw new HttpException(
-        errData || { message: error.message },
+        errData.error_user_msg || error.message,
         error.response?.status || HttpStatus.BAD_GATEWAY,
       );
     }
@@ -128,14 +138,20 @@ export class MetaApiService {
   /**
    * Fetch a single template by its ID.
    */
-  async fetchTemplateById(templateId: string, accessToken: string): Promise<any> {
+  async fetchTemplateById(
+    templateId: string,
+    accessToken: string,
+  ): Promise<any> {
     const url = `${this.baseUrl}/${this.apiVersion}/${templateId}?access_token=${accessToken}`;
 
     try {
       const { data } = await firstValueFrom(this.httpService.get(url));
       return data.data || data;
     } catch (error: any) {
-      this.logger.error(`Failed to fetch template ${templateId}`, error.message);
+      this.logger.error(
+        `Failed to fetch template ${templateId}`,
+        error.message,
+      );
       throw new HttpException(
         `Failed to fetch template: ${error.response?.data?.error?.message || error.message}`,
         HttpStatus.BAD_GATEWAY,
@@ -159,11 +175,15 @@ export class MetaApiService {
         }),
       );
 
-      this.logger.log(`Message sent to ${recipientNumber}: ${data.messages?.[0]?.id}`);
+      this.logger.log(
+        `Message sent to ${recipientNumber}: ${data.messages?.[0]?.id}`,
+      );
       return data;
     } catch (error: any) {
       const errMsg = error.response?.data?.error?.message || error.message;
-      this.logger.error(`Failed to send message to ${recipientNumber}: ${errMsg}`);
+      this.logger.error(
+        `Failed to send message to ${recipientNumber}: ${errMsg}`,
+      );
       throw new HttpException(
         `Meta API error: ${errMsg}`,
         error.response?.status || HttpStatus.BAD_GATEWAY,

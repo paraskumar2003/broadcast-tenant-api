@@ -10,16 +10,20 @@ export class TemplateService {
     private readonly metaApi: MetaApiService,
     private readonly projectService: ProjectService,
     private readonly taggingService: TaggingService,
-  ) { }
+  ) {}
 
   async fetchTemplates(projectId: string) {
-    const config = await this.projectService.getConfigurationByProjectId(projectId);
+    const config =
+      await this.projectService.getConfigurationByProjectId(projectId);
     const templates = await this.metaApi.fetchTemplates(
       config.whatsappBusinessAccountId,
       config.accessToken,
     );
 
-    const tagsMap = await this.taggingService.getTagsForProjectEntities(projectId, EntityType.TEMPLATE);
+    const tagsMap = await this.taggingService.getTagsForProjectEntities(
+      projectId,
+      EntityType.TEMPLATE,
+    );
 
     return templates.map((t: any) => ({
       ...t,
@@ -28,12 +32,14 @@ export class TemplateService {
   }
 
   async fetchTemplateById(templateId: string, projectConfigId: string) {
-    const config = await this.projectService.getConfigurationById(projectConfigId);
+    const config =
+      await this.projectService.getConfigurationById(projectConfigId);
     return this.metaApi.fetchTemplateById(templateId, config.accessToken);
   }
 
   async createTemplate(projectId: string, templatePayload: any) {
-    const config = await this.projectService.getConfigurationByProjectId(projectId);
+    const config =
+      await this.projectService.getConfigurationByProjectId(projectId);
     return this.metaApi.createTemplate(
       config.whatsappBusinessAccountId,
       config.accessToken,
