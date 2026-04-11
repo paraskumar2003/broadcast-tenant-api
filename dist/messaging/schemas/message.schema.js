@@ -22,16 +22,22 @@ let Message = class Message {
     currentStatus;
     statusHistory;
     errorDetails;
+    conversationId;
+    contactId;
+    direction;
+    messageType;
+    text;
+    mediaUrl;
 };
 exports.Message = Message;
 __decorate([
     (0, mongoose_1.Prop)({
         type: mongoose_2.Types.ObjectId,
         ref: 'MessageSession',
-        required: true,
         index: true,
+        default: null,
     }),
-    __metadata("design:type", mongoose_2.Types.ObjectId)
+    __metadata("design:type", Object)
 ], Message.prototype, "sessionId", void 0);
 __decorate([
     (0, mongoose_1.Prop)({
@@ -47,21 +53,21 @@ __decorate([
     __metadata("design:type", String)
 ], Message.prototype, "recipientNumber", void 0);
 __decorate([
-    (0, mongoose_1.Prop)({ index: true, sparse: true }),
+    (0, mongoose_1.Prop)({ index: true, sparse: true, unique: true }),
     __metadata("design:type", String)
 ], Message.prototype, "metaMessageId", void 0);
 __decorate([
-    (0, mongoose_1.Prop)({ required: true }),
-    __metadata("design:type", String)
+    (0, mongoose_1.Prop)({ type: String, default: null }),
+    __metadata("design:type", Object)
 ], Message.prototype, "templateName", void 0);
 __decorate([
-    (0, mongoose_1.Prop)({ default: 'en_US' }),
+    (0, mongoose_1.Prop)({ type: String, default: 'en_US' }),
     __metadata("design:type", String)
 ], Message.prototype, "language", void 0);
 __decorate([
     (0, mongoose_1.Prop)({
         type: String,
-        enum: ['queued', 'sent', 'delivered', 'read', 'failed'],
+        enum: ['queued', 'sent', 'delivered', 'read', 'failed', 'received'],
         default: 'queued',
         index: true,
     }),
@@ -84,11 +90,54 @@ __decorate([
     (0, mongoose_1.Prop)({ type: Object, default: null }),
     __metadata("design:type", Object)
 ], Message.prototype, "errorDetails", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({
+        type: mongoose_2.Types.ObjectId,
+        ref: 'Conversation',
+        index: true,
+        default: null,
+    }),
+    __metadata("design:type", Object)
+], Message.prototype, "conversationId", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({
+        type: mongoose_2.Types.ObjectId,
+        ref: 'Contact',
+        index: true,
+        default: null,
+    }),
+    __metadata("design:type", Object)
+], Message.prototype, "contactId", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({
+        type: String,
+        enum: ['inbound', 'outbound'],
+        default: 'outbound',
+    }),
+    __metadata("design:type", String)
+], Message.prototype, "direction", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({
+        type: String,
+        enum: ['text', 'image', 'document', 'template', 'audio', 'video', 'sticker', 'location', 'contacts', 'reaction', 'unknown'],
+        default: 'template',
+    }),
+    __metadata("design:type", String)
+], Message.prototype, "messageType", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ type: String, default: null }),
+    __metadata("design:type", Object)
+], Message.prototype, "text", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ type: String, default: null }),
+    __metadata("design:type", Object)
+], Message.prototype, "mediaUrl", void 0);
 exports.Message = Message = __decorate([
     (0, mongoose_1.Schema)({ timestamps: true, collection: 'messages' })
 ], Message);
 exports.MessageSchema = mongoose_1.SchemaFactory.createForClass(Message);
 exports.MessageSchema.index({ sessionId: 1, currentStatus: 1 });
-exports.MessageSchema.index({ metaMessageId: 1 });
+exports.MessageSchema.index({ metaMessageId: 1 }, { unique: true, sparse: true });
+exports.MessageSchema.index({ conversationId: 1, createdAt: 1 });
 exports.MessageSchema.index({ createdAt: -1 });
 //# sourceMappingURL=message.schema.js.map

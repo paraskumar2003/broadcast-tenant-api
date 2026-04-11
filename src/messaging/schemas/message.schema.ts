@@ -8,10 +8,10 @@ export class Message {
   @Prop({
     type: Types.ObjectId,
     ref: 'MessageSession',
-    required: true,
     index: true,
+    default: null,
   })
-  sessionId: Types.ObjectId;
+  sessionId: Types.ObjectId | null;
 
   @Prop({
     type: Types.ObjectId,
@@ -24,18 +24,18 @@ export class Message {
   @Prop({ required: true, index: true })
   recipientNumber: string;
 
-  @Prop({ index: true, sparse: true })
+  @Prop({ index: true, sparse: true, unique: true })
   metaMessageId: string;
 
-  @Prop({ required: true })
-  templateName: string;
+  @Prop({ type: String, default: null })
+  templateName: string | null;
 
-  @Prop({ default: 'en_US' })
+  @Prop({ type: String, default: 'en_US' })
   language: string;
 
   @Prop({
     type: String,
-    enum: ['queued', 'sent', 'delivered', 'read', 'failed'],
+    enum: ['queued', 'sent', 'delivered', 'read', 'failed', 'received'],
     default: 'queued',
     index: true,
   })
@@ -59,9 +59,48 @@ export class Message {
 
   @Prop({ type: Object, default: null })
   errorDetails: Record<string, any> | null;
+
+  // ─── Conversation Fields ──────────────────────────────────────────────
+
+  @Prop({
+    type: Types.ObjectId,
+    ref: 'Conversation',
+    index: true,
+    default: null,
+  })
+  conversationId: Types.ObjectId | null;
+
+  @Prop({
+    type: Types.ObjectId,
+    ref: 'Contact',
+    index: true,
+    default: null,
+  })
+  contactId: Types.ObjectId | null;
+
+  @Prop({
+    type: String,
+    enum: ['inbound', 'outbound'],
+    default: 'outbound',
+  })
+  direction: string;
+
+  @Prop({
+    type: String,
+    enum: ['text', 'image', 'document', 'template', 'audio', 'video', 'sticker', 'location', 'contacts', 'reaction', 'unknown'],
+    default: 'template',
+  })
+  messageType: string;
+
+  @Prop({ type: String, default: null })
+  text: string | null;
+
+  @Prop({ type: String, default: null })
+  mediaUrl: string | null;
 }
 
 export const MessageSchema = SchemaFactory.createForClass(Message);
 MessageSchema.index({ sessionId: 1, currentStatus: 1 });
-MessageSchema.index({ metaMessageId: 1 });
+MessageSchema.index({ metaMessageId: 1 }, { unique: true, sparse: true });
+MessageSchema.index({ conversationId: 1, createdAt: 1 });
 MessageSchema.index({ createdAt: -1 });

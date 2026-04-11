@@ -15,6 +15,9 @@ const webhook_consumer_1 = require("./webhook.consumer");
 const delivery_status_schema_1 = require("./schemas/delivery-status.schema");
 const message_schema_1 = require("../messaging/schemas/message.schema");
 const message_session_schema_1 = require("../messaging/schemas/message-session.schema");
+const contact_schema_1 = require("../contact/schemas/contact.schema");
+const conversation_module_1 = require("../conversation/conversation.module");
+const project_module_1 = require("../project/project.module");
 let WebhookModule = class WebhookModule {
 };
 exports.WebhookModule = WebhookModule;
@@ -25,7 +28,10 @@ exports.WebhookModule = WebhookModule = __decorate([
                 { name: delivery_status_schema_1.DeliveryStatus.name, schema: delivery_status_schema_1.DeliveryStatusSchema },
                 { name: message_schema_1.Message.name, schema: message_schema_1.MessageSchema },
                 { name: message_session_schema_1.MessageSession.name, schema: message_session_schema_1.MessageSessionSchema },
+                { name: contact_schema_1.Contact.name, schema: contact_schema_1.ContactSchema },
             ]),
+            conversation_module_1.ConversationModule,
+            project_module_1.ProjectModule,
         ],
         controllers: [webhook_controller_1.WebhookController],
         providers: [webhook_service_1.WebhookService, webhook_consumer_1.WebhookConsumer],

@@ -22,6 +22,7 @@ const reporting_module_1 = require("./reporting/reporting.module");
 const upload_module_1 = require("./upload/upload.module");
 const tagging_module_1 = require("./tagging/tagging.module");
 const contact_module_1 = require("./contact/contact.module");
+const conversation_module_1 = require("./conversation/conversation.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -46,6 +47,7 @@ exports.AppModule = AppModule = __decorate([
             upload_module_1.UploadModule,
             tagging_module_1.TaggingModule,
             contact_module_1.ContactModule,
+            conversation_module_1.ConversationModule,
         ],
     })
 ], AppModule);

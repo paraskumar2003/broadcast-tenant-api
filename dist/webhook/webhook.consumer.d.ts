@@ -3,15 +3,24 @@ import { Model } from 'mongoose';
 import { DeliveryStatusDocument } from './schemas/delivery-status.schema';
 import { MessageDocument } from '../messaging/schemas/message.schema';
 import { MessageSessionDocument } from '../messaging/schemas/message-session.schema';
+import { ContactDocument } from '../contact/schemas/contact.schema';
+import { ConversationService } from '../conversation/conversation.service';
+import { ProjectService } from '../project/project.service';
 import type { IQueueConsumer } from '../queue/consumers/consumer.interface';
 export declare class WebhookConsumer implements OnModuleInit {
     private deliveryStatusModel;
     private messageModel;
     private sessionModel;
+    private contactModel;
     private readonly consumer;
+    private readonly conversationService;
+    private readonly projectService;
     private readonly logger;
-    constructor(deliveryStatusModel: Model<DeliveryStatusDocument>, messageModel: Model<MessageDocument>, sessionModel: Model<MessageSessionDocument>, consumer: IQueueConsumer);
+    constructor(deliveryStatusModel: Model<DeliveryStatusDocument>, messageModel: Model<MessageDocument>, sessionModel: Model<MessageSessionDocument>, contactModel: Model<ContactDocument>, consumer: IQueueConsumer, conversationService: ConversationService, projectService: ProjectService);
     onModuleInit(): Promise<void>;
     processWebhook(data: any): Promise<void>;
+    private processInboundMessage;
     private processStatus;
+    private normalizePhone;
+    private mapMessageType;
 }

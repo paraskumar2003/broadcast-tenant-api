@@ -12,6 +12,9 @@ import {
   MessageSession,
   MessageSessionSchema,
 } from '../messaging/schemas/message-session.schema';
+import { Contact, ContactSchema } from '../contact/schemas/contact.schema';
+import { ConversationModule } from '../conversation/conversation.module';
+import { ProjectModule } from '../project/project.module';
 
 @Module({
   imports: [
@@ -19,10 +22,14 @@ import {
       { name: DeliveryStatus.name, schema: DeliveryStatusSchema },
       { name: Message.name, schema: MessageSchema },
       { name: MessageSession.name, schema: MessageSessionSchema },
+      { name: Contact.name, schema: ContactSchema },
     ]),
+    ConversationModule,
+    ProjectModule,
   ],
   controllers: [WebhookController],
   providers: [WebhookService, WebhookConsumer],
   exports: [WebhookService],
 })
 export class WebhookModule { }
+
