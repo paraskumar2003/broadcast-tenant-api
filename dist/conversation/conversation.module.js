@@ -11,18 +11,21 @@ const common_1 = require("@nestjs/common");
 const mongoose_1 = require("@nestjs/mongoose");
 const conversation_schema_1 = require("./schemas/conversation.schema");
 const message_schema_1 = require("../messaging/schemas/message.schema");
+const contact_schema_1 = require("../contact/schemas/contact.schema");
 const conversation_service_1 = require("./conversation.service");
 const conversation_controller_1 = require("./conversation.controller");
+const project_module_1 = require("../project/project.module");
 const CONVERSATION_MODELS = mongoose_1.MongooseModule.forFeature([
     { name: conversation_schema_1.Conversation.name, schema: conversation_schema_1.ConversationSchema },
     { name: message_schema_1.Message.name, schema: message_schema_1.MessageSchema },
+    { name: contact_schema_1.Contact.name, schema: contact_schema_1.ContactSchema },
 ]);
 let ConversationModule = class ConversationModule {
 };
 exports.ConversationModule = ConversationModule;
 exports.ConversationModule = ConversationModule = __decorate([
     (0, common_1.Module)({
-        imports: [CONVERSATION_MODELS],
+        imports: [CONVERSATION_MODELS, project_module_1.ProjectModule],
         providers: [conversation_service_1.ConversationService],
         controllers: [conversation_controller_1.ConversationController],
         exports: [conversation_service_1.ConversationService, CONVERSATION_MODELS],

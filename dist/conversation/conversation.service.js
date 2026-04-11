@@ -19,14 +19,23 @@ const mongoose_1 = require("@nestjs/mongoose");
 const mongoose_2 = require("mongoose");
 const conversation_schema_1 = require("./schemas/conversation.schema");
 const message_schema_1 = require("../messaging/schemas/message.schema");
+const contact_schema_1 = require("../contact/schemas/contact.schema");
+const project_service_1 = require("../project/project.service");
+const queue_interface_1 = require("../queue/queue.interface");
 const CONVERSATION_WINDOW_MS = 24 * 60 * 60 * 1000;
 let ConversationService = ConversationService_1 = class ConversationService {
     conversationModel;
     messageModel;
+    contactModel;
+    projectService;
+    queueService;
     logger = new common_1.Logger(ConversationService_1.name);
-    constructor(conversationModel, messageModel) {
+    constructor(conversationModel, messageModel, contactModel, projectService, queueService) {
         this.conversationModel = conversationModel;
         this.messageModel = messageModel;
+        this.contactModel = contactModel;
+        this.projectService = projectService;
+        this.queueService = queueService;
     }
     async findOrCreateConversation(projectId, contactId, mobile) {
         const now = new Date();
@@ -49,15 +58,61 @@ let ConversationService = ConversationService_1 = class ConversationService {
         this.logger.debug(`New conversation created for contact ${contactId} in project ${projectId}`);
         return conversation;
     }
-    async updateLastMessage(conversationId, messageId, text, timestamp) {
-        await this.conversationModel.updateOne({ _id: conversationId }, {
-            $set: {
-                lastMessageId: messageId,
-                lastMessageAt: timestamp,
-                lastMessageText: text || '',
-                conversationWindowExpiresAt: new Date(timestamp.getTime() + CONVERSATION_WINDOW_MS),
-            },
+    async updateLastMessage(conversationId, messageId, text, timestamp, extendWindow = true) {
+        const update = {
+            lastMessageId: messageId,
+            lastMessageAt: timestamp,
+            lastMessageText: text || '',
+        };
+        if (extendWindow) {
+            update.conversationWindowExpiresAt = new Date(timestamp.getTime() + CONVERSATION_WINDOW_MS);
+        }
+        await this.conversationModel.updateOne({ _id: conversationId }, { $set: update });
+    }
+    async sendReply(conversationId, text) {
+        const conversation = await this.conversationModel.findById(conversationId);
+        if (!conversation)
+            throw new common_1.NotFoundException('Conversation not found');
+        const now = new Date();
+        if (!conversation.conversationWindowExpiresAt ||
+            conversation.conversationWindowExpiresAt <= now) {
+            throw new common_1.BadRequestException('Conversation window has expired. A template message is required to re-open the conversation.');
+        }
+        if (conversation.status === 'closed') {
+            throw new common_1.BadRequestException('Conversation is closed.');
+        }
+        const contact = await this.contactModel.findById(conversation.contactId);
+        if (!contact || !contact.isActive) {
+            throw new common_1.BadRequestException('Contact is inactive or not found.');
+        }
+        const config = await this.projectService.getConfigurationByProjectId(conversation.projectId.toString());
+        const message = await this.messageModel.create({
+            conversationId: conversation._id,
+            contactId: conversation.contactId,
+            projectConfigId: conversation.projectId,
+            recipientNumber: conversation.mobile,
+            direction: 'outbound',
+            messageType: 'text',
+            text,
+            currentStatus: 'queued',
+            statusHistory: [{ status: 'queued', timestamp: now }],
         });
+        const payload = {
+            messageId: message._id.toString(),
+            sessionId: '',
+            projectConfigId: conversation.projectId.toString(),
+            recipientNumber: conversation.mobile,
+            templateName: '',
+            templateComponents: [],
+            params: {},
+            language: 'en_US',
+            type: 'text',
+            text,
+        };
+        await this.queueService.publish(queue_interface_1.QUEUE_NAMES.MESSAGE_SEND, payload);
+        await this.updateLastMessage(conversation._id, message._id, text, now, false);
+        this.logger.debug(`Reply queued for conversation ${conversationId} -> ${conversation.mobile}`);
+        return { messageId: message._id, conversationId: conversation._id };
     }
     async closeExpiredConversations() {
         const result = await this.conversationModel.updateMany({
@@ -119,7 +174,11 @@ exports.ConversationService = ConversationService = ConversationService_1 = __de
     (0, common_1.Injectable)(),
     __param(0, (0, mongoose_1.InjectModel)(conversation_schema_1.Conversation.name)),
     __param(1, (0, mongoose_1.InjectModel)(message_schema_1.Message.name)),
+    __param(2, (0, mongoose_1.InjectModel)(contact_schema_1.Contact.name)),
+    __param(4, (0, common_1.Inject)(queue_interface_1.QUEUE_SERVICE)),
     __metadata("design:paramtypes", [mongoose_2.Model,
-        mongoose_2.Model])
+        mongoose_2.Model,
+        mongoose_2.Model,
+        project_service_1.ProjectService, Object])
 ], ConversationService);
 //# sourceMappingURL=conversation.service.js.map

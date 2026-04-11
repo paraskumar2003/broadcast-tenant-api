@@ -1,18 +1,32 @@
 import {
   Controller,
   Get,
+  Post,
   Param,
+  Body,
   Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { IsNotEmpty, IsString } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 import { ConversationService } from './conversation.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles } from '../common/decorators/roles.decorator';
+import { UserRole } from '../user/schemas/user.schema';
 import { ApiResponseDto } from '../common/dto/api-response.dto';
+
+class ReplyDto {
+  @ApiProperty({ example: 'Your order has been shipped!', description: 'Text message to send' })
+  @IsString()
+  @IsNotEmpty()
+  text: string;
+}
 
 @ApiTags('Conversations')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('conversations')
 export class ConversationController {
   constructor(private readonly conversationService: ConversationService) {}
@@ -41,13 +55,17 @@ export class ConversationController {
     return ApiResponseDto.success('Conversations fetched', data);
   }
 
-  // ─── Get Single Conversation ──────────────────────────────────────────
+  // ─── Reply to a Conversation ─────────────────────────────────────────
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Get a single conversation with contact details' })
-  async getConversation(@Param('id') id: string) {
-    const data = await this.conversationService.getConversation(id);
-    return ApiResponseDto.success('Conversation fetched', data);
+  @Post(':id/reply')
+  @Roles(UserRole.MASTER, UserRole.SUPER)
+  @ApiOperation({
+    summary:
+      'Send a free-form text reply within an active conversation window',
+  })
+  async reply(@Param('id') id: string, @Body() dto: ReplyDto) {
+    const data = await this.conversationService.sendReply(id, dto.text);
+    return ApiResponseDto.success('Reply queued', data);
   }
 
   // ─── Get Messages for a Conversation ──────────────────────────────────
@@ -70,4 +88,14 @@ export class ConversationController {
     );
     return ApiResponseDto.success('Messages fetched', data);
   }
+
+  // ─── Get Single Conversation ──────────────────────────────────────────
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get a single conversation with contact details' })
+  async getConversation(@Param('id') id: string) {
+    const data = await this.conversationService.getConversation(id);
+    return ApiResponseDto.success('Conversation fetched', data);
+  }
 }
+

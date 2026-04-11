@@ -1,4 +1,10 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import {
@@ -6,6 +12,11 @@ import {
   ConversationDocument,
 } from './schemas/conversation.schema';
 import { Message, MessageDocument } from '../messaging/schemas/message.schema';
+import { Contact, ContactDocument } from '../contact/schemas/contact.schema';
+import { ProjectService } from '../project/project.service';
+import type { IQueueService } from '../queue/queue.interface';
+import { QUEUE_SERVICE, QUEUE_NAMES } from '../queue/queue.interface';
+import type { MessageJobPayload } from '../messaging/messaging.service';
 
 const CONVERSATION_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -19,6 +30,14 @@ export class ConversationService {
 
     @InjectModel(Message.name)
     private readonly messageModel: Model<MessageDocument>,
+
+    @InjectModel(Contact.name)
+    private readonly contactModel: Model<ContactDocument>,
+
+    private readonly projectService: ProjectService,
+
+    @Inject(QUEUE_SERVICE)
+    private readonly queueService: IQueueService,
   ) {}
 
   // ─── Find or Create Conversation ──────────────────────────────────────
@@ -64,25 +83,112 @@ export class ConversationService {
 
   // ─── Update Last Message ──────────────────────────────────────────────
 
+  /**
+   * Updates conversation metadata.
+   * @param extendWindow If true (inbound), resets the 24h window. If false (outbound), leaves it unchanged.
+   */
   async updateLastMessage(
     conversationId: Types.ObjectId,
     messageId: Types.ObjectId,
     text: string,
     timestamp: Date,
+    extendWindow: boolean = true,
   ): Promise<void> {
+    const update: Record<string, any> = {
+      lastMessageId: messageId,
+      lastMessageAt: timestamp,
+      lastMessageText: text || '',
+    };
+
+    // Only inbound messages reset the 24h window
+    if (extendWindow) {
+      update.conversationWindowExpiresAt = new Date(
+        timestamp.getTime() + CONVERSATION_WINDOW_MS,
+      );
+    }
+
     await this.conversationModel.updateOne(
       { _id: conversationId },
-      {
-        $set: {
-          lastMessageId: messageId,
-          lastMessageAt: timestamp,
-          lastMessageText: text || '',
-          conversationWindowExpiresAt: new Date(
-            timestamp.getTime() + CONVERSATION_WINDOW_MS,
-          ),
-        },
-      },
+      { $set: update },
     );
+  }
+
+  // ─── Send Reply (Outbound Free Message) ───────────────────────────────
+
+  async sendReply(conversationId: string, text: string) {
+    // 1. Fetch conversation
+    const conversation = await this.conversationModel.findById(conversationId);
+    if (!conversation) throw new NotFoundException('Conversation not found');
+
+    // 2. Validate window is still active
+    const now = new Date();
+    if (
+      !conversation.conversationWindowExpiresAt ||
+      conversation.conversationWindowExpiresAt <= now
+    ) {
+      throw new BadRequestException(
+        'Conversation window has expired. A template message is required to re-open the conversation.',
+      );
+    }
+
+    if (conversation.status === 'closed') {
+      throw new BadRequestException('Conversation is closed.');
+    }
+
+    // 3. Validate contact is active
+    const contact = await this.contactModel.findById(conversation.contactId);
+    if (!contact || !contact.isActive) {
+      throw new BadRequestException('Contact is inactive or not found.');
+    }
+
+    // 4. Get project config
+    const config = await this.projectService.getConfigurationByProjectId(
+      conversation.projectId.toString(),
+    );
+
+    // 5. Insert message document (before sending — track even if send fails)
+    const message = await this.messageModel.create({
+      conversationId: conversation._id,
+      contactId: conversation.contactId,
+      projectConfigId: conversation.projectId, // follows existing convention
+      recipientNumber: conversation.mobile,
+      direction: 'outbound',
+      messageType: 'text',
+      text,
+      currentStatus: 'queued',
+      statusHistory: [{ status: 'queued', timestamp: now }],
+    });
+
+    // 6. Publish to message-send queue (reuses existing MessagingConsumer)
+    const payload: MessageJobPayload = {
+      messageId: message._id.toString(),
+      sessionId: '',
+      projectConfigId: conversation.projectId.toString(),
+      recipientNumber: conversation.mobile,
+      templateName: '',
+      templateComponents: [],
+      params: {},
+      language: 'en_US',
+      type: 'text',
+      text,
+    };
+
+    await this.queueService.publish(QUEUE_NAMES.MESSAGE_SEND, payload);
+
+    // 7. Update conversation last message (do NOT extend window)
+    await this.updateLastMessage(
+      conversation._id as Types.ObjectId,
+      message._id as Types.ObjectId,
+      text,
+      now,
+      false, // outbound does NOT extend the 24h window
+    );
+
+    this.logger.debug(
+      `Reply queued for conversation ${conversationId} -> ${conversation.mobile}`,
+    );
+
+    return { messageId: message._id, conversationId: conversation._id };
   }
 
   // ─── Close Expired Conversations ──────────────────────────────────────
