@@ -8,8 +8,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsNotEmpty, IsString, IsOptional, IsIn } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ConversationService } from './conversation.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -18,10 +18,37 @@ import { UserRole } from '../user/schemas/user.schema';
 import { ApiResponseDto } from '../common/dto/api-response.dto';
 
 class ReplyDto {
-  @ApiProperty({ example: 'Your order has been shipped!', description: 'Text message to send' })
+  @ApiProperty({
+    enum: ['text', 'image', 'video', 'audio', 'document'],
+    example: 'text',
+    description: 'Type of message to send',
+  })
+  @IsIn(['text', 'image', 'video', 'audio', 'document'])
+  messageType: string;
+
+  @ApiPropertyOptional({
+    example: 'Your order has been shipped!',
+    description: 'Text body (required for text messages, optional caption for media)',
+  })
   @IsString()
-  @IsNotEmpty()
-  text: string;
+  @IsOptional()
+  text?: string;
+
+  @ApiPropertyOptional({
+    example: 'https://example.com/image.jpg',
+    description: 'Media URL (required for image/video/audio/document)',
+  })
+  @IsString()
+  @IsOptional()
+  mediaUrl?: string;
+
+  @ApiPropertyOptional({
+    example: 'invoice.pdf',
+    description: 'Filename used when sending document messages',
+  })
+  @IsString()
+  @IsOptional()
+  fileName?: string;
 }
 
 @ApiTags('Conversations')
@@ -61,10 +88,15 @@ export class ConversationController {
   @Roles(UserRole.MASTER, UserRole.SUPER)
   @ApiOperation({
     summary:
-      'Send a free-form text reply within an active conversation window',
+      'Send a free-form reply within an active conversation window (text or media)',
   })
   async reply(@Param('id') id: string, @Body() dto: ReplyDto) {
-    const data = await this.conversationService.sendReply(id, dto.text);
+    const data = await this.conversationService.sendReply(id, {
+      messageType: dto.messageType,
+      text: dto.text,
+      mediaUrl: dto.mediaUrl,
+      fileName: dto.fileName,
+    });
     return ApiResponseDto.success('Reply queued', data);
   }
 

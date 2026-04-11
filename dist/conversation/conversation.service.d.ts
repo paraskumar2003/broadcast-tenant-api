@@ -14,7 +14,12 @@ export declare class ConversationService {
     constructor(conversationModel: Model<ConversationDocument>, messageModel: Model<MessageDocument>, contactModel: Model<ContactDocument>, projectService: ProjectService, queueService: IQueueService);
     findOrCreateConversation(projectId: Types.ObjectId, contactId: Types.ObjectId, mobile: string): Promise<ConversationDocument>;
     updateLastMessage(conversationId: Types.ObjectId, messageId: Types.ObjectId, text: string, timestamp: Date, extendWindow?: boolean): Promise<void>;
-    sendReply(conversationId: string, text: string): Promise<{
+    sendReply(conversationId: string, input: {
+        messageType: string;
+        text?: string;
+        mediaUrl?: string;
+        fileName?: string;
+    }): Promise<{
         messageId: Types.ObjectId;
         conversationId: Types.ObjectId;
     }>;

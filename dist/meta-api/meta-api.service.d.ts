@@ -27,6 +27,7 @@ export declare class MetaApiService {
     constructor(httpService: HttpService, configService: ConfigService);
     sendTemplateMessage(phoneNumberId: string, accessToken: string, recipientNumber: string, templateName: string, languageCode: string, components: TemplateComponent[]): Promise<MetaSendResponse>;
     sendTextMessage(phoneNumberId: string, accessToken: string, recipientNumber: string, text: string): Promise<MetaSendResponse>;
+    sendMediaMessage(phoneNumberId: string, accessToken: string, recipientNumber: string, mediaType: 'image' | 'video' | 'audio' | 'document', mediaUrl: string, caption?: string, fileName?: string): Promise<MetaSendResponse>;
     fetchTemplates(wabaId: string, accessToken: string): Promise<any[]>;
     createTemplate(wabaId: string, accessToken: string, payload: any): Promise<any>;
     fetchTemplateById(templateId: string, accessToken: string): Promise<any>;

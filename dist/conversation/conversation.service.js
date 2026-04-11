@@ -69,21 +69,44 @@ let ConversationService = ConversationService_1 = class ConversationService {
         }
         await this.conversationModel.updateOne({ _id: conversationId }, { $set: update });
     }
-    async sendReply(conversationId, text) {
+    async sendReply(conversationId, input) {
+        const { messageType, text, mediaUrl, fileName } = input;
         const conversation = await this.conversationModel.findById(conversationId);
         if (!conversation)
             throw new common_1.NotFoundException('Conversation not found');
+        if (conversation.status === 'closed') {
+            throw new common_1.BadRequestException('Conversation is closed.');
+        }
         const now = new Date();
         if (!conversation.conversationWindowExpiresAt ||
             conversation.conversationWindowExpiresAt <= now) {
             throw new common_1.BadRequestException('Conversation window has expired. A template message is required to re-open the conversation.');
         }
-        if (conversation.status === 'closed') {
-            throw new common_1.BadRequestException('Conversation is closed.');
+        const hasInbound = await this.messageModel.exists({
+            conversationId: conversation._id,
+            direction: 'inbound',
+        });
+        if (!hasInbound) {
+            throw new common_1.BadRequestException('Cannot reply: the user has not initiated the conversation.');
         }
         const contact = await this.contactModel.findById(conversation.contactId);
         if (!contact || !contact.isActive) {
             throw new common_1.BadRequestException('Contact is inactive or not found.');
+        }
+        if (messageType === 'text' && !text) {
+            throw new common_1.BadRequestException('Text is required for text messages.');
+        }
+        if (messageType !== 'text' && !mediaUrl) {
+            throw new common_1.BadRequestException(`mediaUrl is required for ${messageType} messages.`);
+        }
+        let finalFileName = fileName;
+        if (messageType === 'document' && !finalFileName && mediaUrl) {
+            try {
+                finalFileName = mediaUrl.split('/').pop() || 'attachment';
+            }
+            catch (err) {
+                finalFileName = 'attachment';
+            }
         }
         const config = await this.projectService.getConfigurationByProjectId(conversation.projectId.toString());
         const message = await this.messageModel.create({
@@ -92,8 +115,9 @@ let ConversationService = ConversationService_1 = class ConversationService {
             projectConfigId: conversation.projectId,
             recipientNumber: conversation.mobile,
             direction: 'outbound',
-            messageType: 'text',
-            text,
+            messageType,
+            text: text || null,
+            mediaUrl: mediaUrl || null,
             currentStatus: 'queued',
             statusHistory: [{ status: 'queued', timestamp: now }],
         });
@@ -106,12 +130,17 @@ let ConversationService = ConversationService_1 = class ConversationService {
             templateComponents: [],
             params: {},
             language: 'en_US',
-            type: 'text',
-            text,
+            type: messageType,
+            text: text || undefined,
+            mediaUrl: mediaUrl || undefined,
+            fileName: finalFileName || undefined,
         };
         await this.queueService.publish(queue_interface_1.QUEUE_NAMES.MESSAGE_SEND, payload);
-        await this.updateLastMessage(conversation._id, message._id, text, now, false);
-        this.logger.debug(`Reply queued for conversation ${conversationId} -> ${conversation.mobile}`);
+        const previewText = messageType === 'text'
+            ? text || ''
+            : `[${messageType}]${text ? ` ${text}` : ''}`;
+        await this.updateLastMessage(conversation._id, message._id, previewText, now, false);
+        this.logger.debug(`Reply (${messageType}) queued for conversation ${conversationId} -> ${conversation.mobile}`);
         return { messageId: message._id, conversationId: conversation._id };
     }
     async closeExpiredConversations() {

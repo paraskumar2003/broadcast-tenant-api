@@ -1,7 +1,10 @@
 import { ConversationService } from './conversation.service';
 import { ApiResponseDto } from '../common/dto/api-response.dto';
 declare class ReplyDto {
-    text: string;
+    messageType: string;
+    text?: string;
+    mediaUrl?: string;
+    fileName?: string;
 }
 export declare class ConversationController {
     private readonly conversationService;

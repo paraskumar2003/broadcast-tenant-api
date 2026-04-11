@@ -13,8 +13,10 @@ export interface MessageJobPayload {
     templateComponents: any[];
     params: Record<string, any>;
     language: string;
-    type: 'template' | 'text';
+    type: 'template' | 'text' | 'image' | 'video' | 'audio' | 'document';
     text?: string;
+    mediaUrl?: string;
+    fileName?: string;
 }
 export declare class MessagingService {
     private sessionModel;

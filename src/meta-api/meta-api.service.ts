@@ -80,6 +80,36 @@ export class MetaApiService {
   }
 
   /**
+   * Send a media WhatsApp message (image, video, audio, document).
+   */
+  async sendMediaMessage(
+    phoneNumberId: string,
+    accessToken: string,
+    recipientNumber: string,
+    mediaType: 'image' | 'video' | 'audio' | 'document',
+    mediaUrl: string,
+    caption?: string,
+    fileName?: string,
+  ): Promise<MetaSendResponse> {
+    const url = `${this.baseUrl}/${this.apiVersion}/${phoneNumberId}/messages`;
+
+    const mediaBody: Record<string, any> = { link: mediaUrl };
+    if (caption) mediaBody.caption = caption;
+    if (mediaType === 'document' && fileName) {
+      mediaBody.filename = fileName;
+    }
+
+    const payload = {
+      messaging_product: 'whatsapp',
+      to: recipientNumber,
+      type: mediaType,
+      [mediaType]: mediaBody,
+    };
+
+    return this.postMessage(url, accessToken, payload, recipientNumber);
+  }
+
+  /**
    * Fetch all message templates from a WABA.
    */
   async fetchTemplates(wabaId: string, accessToken: string): Promise<any[]> {

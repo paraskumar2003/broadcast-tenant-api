@@ -24,14 +24,47 @@ const roles_decorator_1 = require("../common/decorators/roles.decorator");
 const user_schema_1 = require("../user/schemas/user.schema");
 const api_response_dto_1 = require("../common/dto/api-response.dto");
 class ReplyDto {
+    messageType;
     text;
+    mediaUrl;
+    fileName;
 }
 __decorate([
-    (0, swagger_2.ApiProperty)({ example: 'Your order has been shipped!', description: 'Text message to send' }),
+    (0, swagger_2.ApiProperty)({
+        enum: ['text', 'image', 'video', 'audio', 'document'],
+        example: 'text',
+        description: 'Type of message to send',
+    }),
+    (0, class_validator_1.IsIn)(['text', 'image', 'video', 'audio', 'document']),
+    __metadata("design:type", String)
+], ReplyDto.prototype, "messageType", void 0);
+__decorate([
+    (0, swagger_2.ApiPropertyOptional)({
+        example: 'Your order has been shipped!',
+        description: 'Text body (required for text messages, optional caption for media)',
+    }),
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], ReplyDto.prototype, "text", void 0);
+__decorate([
+    (0, swagger_2.ApiPropertyOptional)({
+        example: 'https://example.com/image.jpg',
+        description: 'Media URL (required for image/video/audio/document)',
+    }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], ReplyDto.prototype, "mediaUrl", void 0);
+__decorate([
+    (0, swagger_2.ApiPropertyOptional)({
+        example: 'invoice.pdf',
+        description: 'Filename used when sending document messages',
+    }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], ReplyDto.prototype, "fileName", void 0);
 let ConversationController = class ConversationController {
     conversationService;
     constructor(conversationService) {
@@ -42,7 +75,12 @@ let ConversationController = class ConversationController {
         return api_response_dto_1.ApiResponseDto.success('Conversations fetched', data);
     }
     async reply(id, dto) {
-        const data = await this.conversationService.sendReply(id, dto.text);
+        const data = await this.conversationService.sendReply(id, {
+            messageType: dto.messageType,
+            text: dto.text,
+            mediaUrl: dto.mediaUrl,
+            fileName: dto.fileName,
+        });
         return api_response_dto_1.ApiResponseDto.success('Reply queued', data);
     }
     async getMessages(id, page, limit) {
@@ -75,7 +113,7 @@ __decorate([
     (0, common_1.Post)(':id/reply'),
     (0, roles_decorator_1.Roles)(user_schema_1.UserRole.MASTER, user_schema_1.UserRole.SUPER),
     (0, swagger_1.ApiOperation)({
-        summary: 'Send a free-form text reply within an active conversation window',
+        summary: 'Send a free-form reply within an active conversation window (text or media)',
     }),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),

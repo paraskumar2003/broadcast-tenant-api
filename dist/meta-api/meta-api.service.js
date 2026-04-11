@@ -51,6 +51,22 @@ let MetaApiService = MetaApiService_1 = class MetaApiService {
         };
         return this.postMessage(url, accessToken, payload, recipientNumber);
     }
+    async sendMediaMessage(phoneNumberId, accessToken, recipientNumber, mediaType, mediaUrl, caption, fileName) {
+        const url = `${this.baseUrl}/${this.apiVersion}/${phoneNumberId}/messages`;
+        const mediaBody = { link: mediaUrl };
+        if (caption)
+            mediaBody.caption = caption;
+        if (mediaType === 'document' && fileName) {
+            mediaBody.filename = fileName;
+        }
+        const payload = {
+            messaging_product: 'whatsapp',
+            to: recipientNumber,
+            type: mediaType,
+            [mediaType]: mediaBody,
+        };
+        return this.postMessage(url, accessToken, payload, recipientNumber);
+    }
     async fetchTemplates(wabaId, accessToken) {
         const url = `${this.baseUrl}/${this.apiVersion}/${wabaId}/message_templates?limit=200&access_token=${accessToken}`;
         try {

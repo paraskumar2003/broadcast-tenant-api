@@ -86,6 +86,46 @@ export class MessagingConsumer implements OnModuleInit {
         return;
       }
 
+      // Handle media messages (image, video, audio, document)
+      const mediaTypes = ['image', 'video', 'audio', 'document'] as const;
+      if (mediaTypes.includes(type as any)) {
+        const response = await this.metaApiService.sendMediaMessage(
+          config.phoneNumberId,
+          config.accessToken,
+          recipientNumber,
+          type as 'image' | 'video' | 'audio' | 'document',
+          data.mediaUrl || '',
+          data.text || undefined, // text serves as caption for media
+          data.fileName,
+        );
+        const metaMessageId = response.messages?.[0]?.id;
+
+        if (messageId) {
+          await this.messageModel.updateOne(
+            { _id: new Types.ObjectId(messageId) },
+            {
+              metaMessageId,
+              currentStatus: 'sent',
+              $push: {
+                statusHistory: { status: 'sent', timestamp: new Date() },
+              },
+            },
+          );
+        }
+
+        if (sessionId) {
+          await this.sessionModel.updateOne(
+            { _id: new Types.ObjectId(sessionId) },
+            { $inc: { 'counters.sent': 1 } },
+          );
+        }
+
+        this.logger.log(
+          `Media (${type}) sent to ${recipientNumber} (metaId: ${metaMessageId})`,
+        );
+        return;
+      }
+
       // Build template components
       const components = this.templateBuilder.buildComponents(
         data.templateComponents,

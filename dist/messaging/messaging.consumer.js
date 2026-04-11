@@ -68,6 +68,25 @@ let MessagingConsumer = MessagingConsumer_1 = class MessagingConsumer {
                 this.logger.log(`Text message sent to ${recipientNumber} (metaId: ${metaMessageId})`);
                 return;
             }
+            const mediaTypes = ['image', 'video', 'audio', 'document'];
+            if (mediaTypes.includes(type)) {
+                const response = await this.metaApiService.sendMediaMessage(config.phoneNumberId, config.accessToken, recipientNumber, type, data.mediaUrl || '', data.text || undefined, data.fileName);
+                const metaMessageId = response.messages?.[0]?.id;
+                if (messageId) {
+                    await this.messageModel.updateOne({ _id: new mongoose_2.Types.ObjectId(messageId) }, {
+                        metaMessageId,
+                        currentStatus: 'sent',
+                        $push: {
+                            statusHistory: { status: 'sent', timestamp: new Date() },
+                        },
+                    });
+                }
+                if (sessionId) {
+                    await this.sessionModel.updateOne({ _id: new mongoose_2.Types.ObjectId(sessionId) }, { $inc: { 'counters.sent': 1 } });
+                }
+                this.logger.log(`Media (${type}) sent to ${recipientNumber} (metaId: ${metaMessageId})`);
+                return;
+            }
             const components = this.templateBuilder.buildComponents(data.templateComponents, data.params);
             const response = await this.metaApiService.sendTemplateMessage(config.phoneNumberId, config.accessToken, recipientNumber, data.templateName, data.language, components);
             const metaMessageId = response.messages?.[0]?.id;

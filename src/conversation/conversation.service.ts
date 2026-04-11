@@ -115,12 +115,22 @@ export class ConversationService {
 
   // ─── Send Reply (Outbound Free Message) ───────────────────────────────
 
-  async sendReply(conversationId: string, text: string) {
+  async sendReply(
+    conversationId: string,
+    input: { messageType: string; text?: string; mediaUrl?: string; fileName?: string },
+  ) {
+    const { messageType, text, mediaUrl, fileName } = input;
+
     // 1. Fetch conversation
     const conversation = await this.conversationModel.findById(conversationId);
     if (!conversation) throw new NotFoundException('Conversation not found');
 
-    // 2. Validate window is still active
+    // 2. Validate conversation status
+    if (conversation.status === 'closed') {
+      throw new BadRequestException('Conversation is closed.');
+    }
+
+    // 3. Validate window is still active
     const now = new Date();
     if (
       !conversation.conversationWindowExpiresAt ||
@@ -131,35 +141,63 @@ export class ConversationService {
       );
     }
 
-    if (conversation.status === 'closed') {
-      throw new BadRequestException('Conversation is closed.');
+    // 4. Validate user-initiated (at least one inbound message exists)
+    const hasInbound = await this.messageModel.exists({
+      conversationId: conversation._id,
+      direction: 'inbound',
+    });
+    if (!hasInbound) {
+      throw new BadRequestException(
+        'Cannot reply: the user has not initiated the conversation.',
+      );
     }
 
-    // 3. Validate contact is active
+    // 5. Validate contact is active
     const contact = await this.contactModel.findById(conversation.contactId);
     if (!contact || !contact.isActive) {
       throw new BadRequestException('Contact is inactive or not found.');
     }
 
-    // 4. Get project config
+    // 6. Validate message content
+    if (messageType === 'text' && !text) {
+      throw new BadRequestException('Text is required for text messages.');
+    }
+    if (messageType !== 'text' && !mediaUrl) {
+      throw new BadRequestException(
+        `mediaUrl is required for ${messageType} messages.`,
+      );
+    }
+
+    // 7. Process fileName if document
+    let finalFileName = fileName;
+    if (messageType === 'document' && !finalFileName && mediaUrl) {
+      try {
+        finalFileName = mediaUrl.split('/').pop() || 'attachment';
+      } catch (err) {
+        finalFileName = 'attachment';
+      }
+    }
+
+    // 8. Get project config (validates project is active)
     const config = await this.projectService.getConfigurationByProjectId(
       conversation.projectId.toString(),
     );
 
-    // 5. Insert message document (before sending — track even if send fails)
+    // 9. Insert message document (before sending — track even if send fails)
     const message = await this.messageModel.create({
       conversationId: conversation._id,
       contactId: conversation.contactId,
       projectConfigId: conversation.projectId, // follows existing convention
       recipientNumber: conversation.mobile,
       direction: 'outbound',
-      messageType: 'text',
-      text,
+      messageType,
+      text: text || null,
+      mediaUrl: mediaUrl || null,
       currentStatus: 'queued',
       statusHistory: [{ status: 'queued', timestamp: now }],
     });
 
-    // 6. Publish to message-send queue (reuses existing MessagingConsumer)
+    // 10. Publish to message-send queue (reuses existing MessagingConsumer)
     const payload: MessageJobPayload = {
       messageId: message._id.toString(),
       sessionId: '',
@@ -169,23 +207,30 @@ export class ConversationService {
       templateComponents: [],
       params: {},
       language: 'en_US',
-      type: 'text',
-      text,
+      type: messageType as MessageJobPayload['type'],
+      text: text || undefined,
+      mediaUrl: mediaUrl || undefined,
+      fileName: finalFileName || undefined,
     };
 
     await this.queueService.publish(QUEUE_NAMES.MESSAGE_SEND, payload);
 
-    // 7. Update conversation last message (do NOT extend window)
+    // 10. Update conversation last message (do NOT extend window)
+    const previewText =
+      messageType === 'text'
+        ? text || ''
+        : `[${messageType}]${text ? ` ${text}` : ''}`;
+
     await this.updateLastMessage(
       conversation._id as Types.ObjectId,
       message._id as Types.ObjectId,
-      text,
+      previewText,
       now,
       false, // outbound does NOT extend the 24h window
     );
 
     this.logger.debug(
-      `Reply queued for conversation ${conversationId} -> ${conversation.mobile}`,
+      `Reply (${messageType}) queued for conversation ${conversationId} -> ${conversation.mobile}`,
     );
 
     return { messageId: message._id, conversationId: conversation._id };
