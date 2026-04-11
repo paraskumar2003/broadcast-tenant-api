@@ -183,7 +183,7 @@ let WebhookConsumer = WebhookConsumer_1 = class WebhookConsumer {
     }
     normalizePhone(phone) {
         if (!phone.startsWith('+'))
-            return `+${phone}`;
+            return `${phone}`;
         return phone;
     }
     mapMessageType(waType) {

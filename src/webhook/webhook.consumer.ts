@@ -255,7 +255,7 @@ export class WebhookConsumer implements OnModuleInit {
   // ─── Helpers ──────────────────────────────────────────────────────────
 
   private normalizePhone(phone: string): string {
-    if (!phone.startsWith('+')) return `+${phone}`;
+    if (!phone.startsWith('+')) return `${phone}`;
     return phone;
   }
 
