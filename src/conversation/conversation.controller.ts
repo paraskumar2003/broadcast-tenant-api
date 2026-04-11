@@ -104,7 +104,7 @@ export class ConversationController {
 
   @Get(':id/messages')
   @ApiOperation({
-    summary: 'Get paginated messages for a conversation (sorted ascending)',
+    summary: 'Get paginated messages for a conversation (sorted descending)',
   })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })

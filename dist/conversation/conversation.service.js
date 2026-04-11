@@ -187,7 +187,7 @@ let ConversationService = ConversationService_1 = class ConversationService {
         const [messages, total] = await Promise.all([
             this.messageModel
                 .find({ conversationId: convId })
-                .sort({ createdAt: 1 })
+                .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit),
             this.messageModel.countDocuments({ conversationId: convId }),

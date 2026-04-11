@@ -124,7 +124,7 @@ __decorate([
 __decorate([
     (0, common_1.Get)(':id/messages'),
     (0, swagger_1.ApiOperation)({
-        summary: 'Get paginated messages for a conversation (sorted ascending)',
+        summary: 'Get paginated messages for a conversation (sorted descending)',
     }),
     (0, swagger_1.ApiQuery)({ name: 'page', required: false, type: Number }),
     (0, swagger_1.ApiQuery)({ name: 'limit', required: false, type: Number }),

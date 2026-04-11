@@ -306,7 +306,7 @@ export class ConversationService {
     const [messages, total] = await Promise.all([
       this.messageModel
         .find({ conversationId: convId })
-        .sort({ createdAt: 1 }) // ascending for chat view
+        .sort({ createdAt: -1 }) // ascending for chat view
         .skip(skip)
         .limit(limit),
       this.messageModel.countDocuments({ conversationId: convId }),
