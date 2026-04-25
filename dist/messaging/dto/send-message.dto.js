@@ -19,6 +19,8 @@ class SendSingleDto {
     params;
     language;
     scheduledAt;
+    skipBroadcast;
+    broadcastName;
 }
 exports.SendSingleDto = SendSingleDto;
 __decorate([
@@ -54,6 +56,23 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], SendSingleDto.prototype, "scheduledAt", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Skip broadcast creation — send as a quick message',
+        default: false,
+    }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], SendSingleDto.prototype, "skipBroadcast", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Broadcast name (auto-generated if empty). Ignored when skipBroadcast is true.',
+    }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], SendSingleDto.prototype, "broadcastName", void 0);
 class SendBulkDto {
     projectConfigId;
     template;
@@ -62,6 +81,8 @@ class SendBulkDto {
     params;
     language;
     scheduledAt;
+    skipBroadcast;
+    broadcastName;
 }
 exports.SendBulkDto = SendBulkDto;
 __decorate([
@@ -110,6 +131,23 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], SendBulkDto.prototype, "scheduledAt", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Skip broadcast creation — send as a quick message',
+        default: false,
+    }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], SendBulkDto.prototype, "skipBroadcast", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Broadcast name (auto-generated if empty). Ignored when skipBroadcast is true.',
+    }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], SendBulkDto.prototype, "broadcastName", void 0);
 class SendTextDto {
     projectConfigId;
     number;

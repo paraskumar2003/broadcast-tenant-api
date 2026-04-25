@@ -15,6 +15,14 @@ export class Message {
 
   @Prop({
     type: Types.ObjectId,
+    ref: 'Broadcast',
+    index: true,
+    default: null,
+  })
+  broadcastId: Types.ObjectId | null;
+
+  @Prop({
+    type: Types.ObjectId,
     ref: 'ProjectConfiguration',
     required: true,
     index: true,

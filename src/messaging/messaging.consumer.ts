@@ -6,6 +6,10 @@ import {
   MessageSession,
   MessageSessionDocument,
 } from './schemas/message-session.schema';
+import {
+  Broadcast,
+  BroadcastDocument,
+} from './schemas/broadcast.schema';
 import { MetaApiService } from '../meta-api/meta-api.service';
 import { ProjectService } from '../project/project.service';
 import { TemplateBuilderService } from './template-builder.service';
@@ -22,6 +26,8 @@ export class MessagingConsumer implements OnModuleInit {
     @InjectModel(Message.name) private messageModel: Model<MessageDocument>,
     @InjectModel(MessageSession.name)
     private sessionModel: Model<MessageSessionDocument>,
+    @InjectModel(Broadcast.name)
+    private broadcastModel: Model<BroadcastDocument>,
     @Inject(QUEUE_CONSUMER) private readonly consumer: IQueueConsumer,
     private readonly metaApiService: MetaApiService,
     private readonly projectService: ProjectService,
@@ -38,9 +44,46 @@ export class MessagingConsumer implements OnModuleInit {
     this.logger.log('Messaging consumer registered');
   }
 
+  /**
+   * Helper: update session + broadcast counters in parallel.
+   */
+  private async updateCounters(
+    sessionId: string | undefined,
+    broadcastId: string | undefined,
+    inc: Record<string, number>,
+    extra?: Record<string, any>,
+  ) {
+    const ops: Promise<any>[] = [];
+
+    if (sessionId) {
+      ops.push(
+        this.sessionModel.updateOne(
+          { _id: new Types.ObjectId(sessionId) },
+          { $inc: inc, ...(extra || {}) },
+        ),
+      );
+    }
+    if (broadcastId) {
+      ops.push(
+        this.broadcastModel.updateOne(
+          { _id: new Types.ObjectId(broadcastId) },
+          { $inc: inc, ...(extra || {}) },
+        ),
+      );
+    }
+
+    await Promise.all(ops);
+  }
+
   async processMessage(data: MessageJobPayload): Promise<void> {
-    const { messageId, sessionId, projectConfigId, recipientNumber, type } =
-      data;
+    const {
+      messageId,
+      sessionId,
+      broadcastId,
+      projectConfigId,
+      recipientNumber,
+      type,
+    } = data;
 
     console.log(data, 'data');
 
@@ -72,13 +115,9 @@ export class MessagingConsumer implements OnModuleInit {
           );
         }
 
-        // Update session counters
-        if (sessionId) {
-          await this.sessionModel.updateOne(
-            { _id: new Types.ObjectId(sessionId) },
-            { $inc: { 'counters.sent': 1 } },
-          );
-        }
+        await this.updateCounters(sessionId, broadcastId, {
+          'counters.sent': 1,
+        });
 
         this.logger.log(
           `Text message sent to ${recipientNumber} (metaId: ${metaMessageId})`,
@@ -113,12 +152,9 @@ export class MessagingConsumer implements OnModuleInit {
           );
         }
 
-        if (sessionId) {
-          await this.sessionModel.updateOne(
-            { _id: new Types.ObjectId(sessionId) },
-            { $inc: { 'counters.sent': 1 } },
-          );
-        }
+        await this.updateCounters(sessionId, broadcastId, {
+          'counters.sent': 1,
+        });
 
         this.logger.log(
           `Media (${type}) sent to ${recipientNumber} (metaId: ${metaMessageId})`,
@@ -158,7 +194,7 @@ export class MessagingConsumer implements OnModuleInit {
         );
       }
 
-      // Update session counters
+      // Update session + broadcast counters
       if (sessionId) {
         const session = await this.sessionModel.findById(sessionId);
         if (session) {
@@ -167,6 +203,25 @@ export class MessagingConsumer implements OnModuleInit {
 
           await this.sessionModel.updateOne(
             { _id: new Types.ObjectId(sessionId) },
+            {
+              $inc: { 'counters.sent': 1 },
+              ...(isComplete
+                ? { status: 'completed', completedAt: new Date() }
+                : {}),
+            },
+          );
+        }
+      }
+
+      // Update broadcast counters (+ completion check)
+      if (broadcastId) {
+        const broadcast = await this.broadcastModel.findById(broadcastId);
+        if (broadcast) {
+          const newSentCount = broadcast.counters.sent + 1;
+          const isComplete = newSentCount >= broadcast.totalRecipients;
+
+          await this.broadcastModel.updateOne(
+            { _id: new Types.ObjectId(broadcastId) },
             {
               $inc: { 'counters.sent': 1 },
               ...(isComplete
@@ -203,13 +258,10 @@ export class MessagingConsumer implements OnModuleInit {
         );
       }
 
-      // Update session failed counter
-      if (sessionId) {
-        await this.sessionModel.updateOne(
-          { _id: new Types.ObjectId(sessionId) },
-          { $inc: { 'counters.failed': 1 } },
-        );
-      }
+      // Update session + broadcast failed counters
+      await this.updateCounters(sessionId, broadcastId, {
+        'counters.failed': 1,
+      });
 
       throw error; // Re-throw for queue retry logic
     }

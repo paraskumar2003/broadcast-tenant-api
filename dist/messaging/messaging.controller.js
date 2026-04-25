@@ -34,7 +34,7 @@ let MessagingController = class MessagingController {
         const data = await this.messagingService.sendBulk(dto);
         return api_response_dto_1.ApiResponseDto.success('Bulk messages queued successfully', data);
     }
-    async sendBulkCsv(file, projectConfigId, templateStr, language, scheduledAt) {
+    async sendBulkCsv(file, projectConfigId, templateStr, language, scheduledAt, skipBroadcast, broadcastName) {
         if (!file)
             throw new common_1.BadRequestException('No CSV file provided');
         if (!projectConfigId)
@@ -57,12 +57,21 @@ let MessagingController = class MessagingController {
             template,
             language,
             scheduledAt,
+            skipBroadcast: skipBroadcast === 'true',
+            broadcastName,
         });
         return api_response_dto_1.ApiResponseDto.success('CSV broadcast queued', data);
     }
     async sendText(dto) {
         const data = await this.messagingService.sendText(dto);
         return api_response_dto_1.ApiResponseDto.success('Text message queued', data);
+    }
+    async listBroadcasts(projectConfigId, page = '1', limit = '10') {
+        if (!projectConfigId) {
+            throw new common_1.BadRequestException('projectConfigId is required');
+        }
+        const data = await this.messagingService.listBroadcasts(projectConfigId, parseInt(page, 10) || 1, Math.min(parseInt(limit, 10) || 10, 50));
+        return api_response_dto_1.ApiResponseDto.success('Broadcasts fetched', data);
     }
 };
 exports.MessagingController = MessagingController;
@@ -76,7 +85,9 @@ __decorate([
 ], MessagingController.prototype, "sendSingle", null);
 __decorate([
     (0, common_1.Post)('send-bulk'),
-    (0, swagger_1.ApiOperation)({ summary: 'Send a template message to multiple recipients (by numbers and/or tags)' }),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Send a template message to multiple recipients (by numbers and/or tags)',
+    }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [send_message_dto_1.SendBulkDto]),
@@ -92,11 +103,29 @@ __decorate([
         schema: {
             type: 'object',
             properties: {
-                file: { type: 'string', format: 'binary', description: 'CSV file with mobile column' },
+                file: {
+                    type: 'string',
+                    format: 'binary',
+                    description: 'CSV file with mobile column',
+                },
                 projectConfigId: { type: 'string' },
-                template: { type: 'string', description: 'Template JSON (stringified)' },
+                template: {
+                    type: 'string',
+                    description: 'Template JSON (stringified)',
+                },
                 language: { type: 'string', default: 'en_US' },
-                scheduledAt: { type: 'string', description: 'ISO date string (optional)' },
+                scheduledAt: {
+                    type: 'string',
+                    description: 'ISO date string (optional)',
+                },
+                skipBroadcast: {
+                    type: 'string',
+                    description: '"true" to skip broadcast creation',
+                },
+                broadcastName: {
+                    type: 'string',
+                    description: 'Broadcast name (auto-generated if empty)',
+                },
             },
             required: ['file', 'projectConfigId', 'template'],
         },
@@ -107,8 +136,10 @@ __decorate([
     __param(2, (0, common_1.Body)('template')),
     __param(3, (0, common_1.Body)('language')),
     __param(4, (0, common_1.Body)('scheduledAt')),
+    __param(5, (0, common_1.Body)('skipBroadcast')),
+    __param(6, (0, common_1.Body)('broadcastName')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, String, String, String]),
+    __metadata("design:paramtypes", [Object, String, String, String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], MessagingController.prototype, "sendBulkCsv", null);
 __decorate([
@@ -119,6 +150,19 @@ __decorate([
     __metadata("design:paramtypes", [send_message_dto_1.SendTextDto]),
     __metadata("design:returntype", Promise)
 ], MessagingController.prototype, "sendText", null);
+__decorate([
+    (0, common_1.Get)('broadcasts'),
+    (0, swagger_1.ApiOperation)({ summary: 'List broadcasts for a project (paginated)' }),
+    (0, swagger_1.ApiQuery)({ name: 'projectConfigId', required: true }),
+    (0, swagger_1.ApiQuery)({ name: 'page', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'limit', required: false }),
+    __param(0, (0, common_1.Query)('projectConfigId')),
+    __param(1, (0, common_1.Query)('page')),
+    __param(2, (0, common_1.Query)('limit')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:returntype", Promise)
+], MessagingController.prototype, "listBroadcasts", null);
 exports.MessagingController = MessagingController = __decorate([
     (0, swagger_1.ApiTags)('Messaging'),
     (0, swagger_1.ApiBearerAuth)(),

@@ -1,4 +1,10 @@
-import { IsString, IsArray, IsOptional, IsObject } from 'class-validator';
+import {
+  IsString,
+  IsArray,
+  IsOptional,
+  IsObject,
+  IsBoolean,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class SendSingleDto {
@@ -28,6 +34,22 @@ export class SendSingleDto {
   @IsOptional()
   @IsString()
   scheduledAt?: string;
+
+  @ApiPropertyOptional({
+    description: 'Skip broadcast creation — send as a quick message',
+    default: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  skipBroadcast?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'Broadcast name (auto-generated if empty). Ignored when skipBroadcast is true.',
+  })
+  @IsOptional()
+  @IsString()
+  broadcastName?: string;
 }
 
 export class SendBulkDto {
@@ -74,6 +96,22 @@ export class SendBulkDto {
   @IsOptional()
   @IsString()
   scheduledAt?: string;
+
+  @ApiPropertyOptional({
+    description: 'Skip broadcast creation — send as a quick message',
+    default: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  skipBroadcast?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'Broadcast name (auto-generated if empty). Ignored when skipBroadcast is true.',
+  })
+  @IsOptional()
+  @IsString()
+  broadcastName?: string;
 }
 
 export class SendTextDto {

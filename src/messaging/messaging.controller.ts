@@ -1,7 +1,9 @@
 import {
   Controller,
   Post,
+  Get,
   Body,
+  Query,
   UseGuards,
   UsePipes,
   ValidationPipe,
@@ -17,6 +19,7 @@ import {
   ApiOperation,
   ApiConsumes,
   ApiBody,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { MessagingService } from './messaging.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -43,7 +46,10 @@ export class MessagingController {
   }
 
   @Post('send-bulk')
-  @ApiOperation({ summary: 'Send a template message to multiple recipients (by numbers and/or tags)' })
+  @ApiOperation({
+    summary:
+      'Send a template message to multiple recipients (by numbers and/or tags)',
+  })
   async sendBulk(@Body() dto: SendBulkDto) {
     const data = await this.messagingService.sendBulk(dto);
     return ApiResponseDto.success('Bulk messages queued successfully', data);
@@ -59,11 +65,29 @@ export class MessagingController {
     schema: {
       type: 'object',
       properties: {
-        file: { type: 'string', format: 'binary', description: 'CSV file with mobile column' },
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'CSV file with mobile column',
+        },
         projectConfigId: { type: 'string' },
-        template: { type: 'string', description: 'Template JSON (stringified)' },
+        template: {
+          type: 'string',
+          description: 'Template JSON (stringified)',
+        },
         language: { type: 'string', default: 'en_US' },
-        scheduledAt: { type: 'string', description: 'ISO date string (optional)' },
+        scheduledAt: {
+          type: 'string',
+          description: 'ISO date string (optional)',
+        },
+        skipBroadcast: {
+          type: 'string',
+          description: '"true" to skip broadcast creation',
+        },
+        broadcastName: {
+          type: 'string',
+          description: 'Broadcast name (auto-generated if empty)',
+        },
       },
       required: ['file', 'projectConfigId', 'template'],
     },
@@ -75,6 +99,8 @@ export class MessagingController {
     @Body('template') templateStr: string,
     @Body('language') language?: string,
     @Body('scheduledAt') scheduledAt?: string,
+    @Body('skipBroadcast') skipBroadcast?: string,
+    @Body('broadcastName') broadcastName?: string,
   ) {
     if (!file) throw new BadRequestException('No CSV file provided');
     if (!projectConfigId)
@@ -98,6 +124,8 @@ export class MessagingController {
       template,
       language,
       scheduledAt,
+      skipBroadcast: skipBroadcast === 'true',
+      broadcastName,
     });
 
     return ApiResponseDto.success('CSV broadcast queued', data);
@@ -109,5 +137,25 @@ export class MessagingController {
     const data = await this.messagingService.sendText(dto);
     return ApiResponseDto.success('Text message queued', data);
   }
-}
 
+  @Get('broadcasts')
+  @ApiOperation({ summary: 'List broadcasts for a project (paginated)' })
+  @ApiQuery({ name: 'projectConfigId', required: true })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  async listBroadcasts(
+    @Query('projectConfigId') projectConfigId: string,
+    @Query('page') page = '1',
+    @Query('limit') limit = '10',
+  ) {
+    if (!projectConfigId) {
+      throw new BadRequestException('projectConfigId is required');
+    }
+    const data = await this.messagingService.listBroadcasts(
+      projectConfigId,
+      parseInt(page, 10) || 1,
+      Math.min(parseInt(limit, 10) || 10, 50),
+    );
+    return ApiResponseDto.success('Broadcasts fetched', data);
+  }
+}

@@ -19,6 +19,7 @@ const mongoose_1 = require("@nestjs/mongoose");
 const mongoose_2 = require("mongoose");
 const message_schema_1 = require("./schemas/message.schema");
 const message_session_schema_1 = require("./schemas/message-session.schema");
+const broadcast_schema_1 = require("./schemas/broadcast.schema");
 const meta_api_service_1 = require("../meta-api/meta-api.service");
 const project_service_1 = require("../project/project.service");
 const template_builder_service_1 = require("./template-builder.service");
@@ -27,14 +28,16 @@ const queue_interface_1 = require("../queue/queue.interface");
 let MessagingConsumer = MessagingConsumer_1 = class MessagingConsumer {
     messageModel;
     sessionModel;
+    broadcastModel;
     consumer;
     metaApiService;
     projectService;
     templateBuilder;
     logger = new common_1.Logger(MessagingConsumer_1.name);
-    constructor(messageModel, sessionModel, consumer, metaApiService, projectService, templateBuilder) {
+    constructor(messageModel, sessionModel, broadcastModel, consumer, metaApiService, projectService, templateBuilder) {
         this.messageModel = messageModel;
         this.sessionModel = sessionModel;
+        this.broadcastModel = broadcastModel;
         this.consumer = consumer;
         this.metaApiService = metaApiService;
         this.projectService = projectService;
@@ -45,8 +48,18 @@ let MessagingConsumer = MessagingConsumer_1 = class MessagingConsumer {
         await this.consumer.start();
         this.logger.log('Messaging consumer registered');
     }
+    async updateCounters(sessionId, broadcastId, inc, extra) {
+        const ops = [];
+        if (sessionId) {
+            ops.push(this.sessionModel.updateOne({ _id: new mongoose_2.Types.ObjectId(sessionId) }, { $inc: inc, ...(extra || {}) }));
+        }
+        if (broadcastId) {
+            ops.push(this.broadcastModel.updateOne({ _id: new mongoose_2.Types.ObjectId(broadcastId) }, { $inc: inc, ...(extra || {}) }));
+        }
+        await Promise.all(ops);
+    }
     async processMessage(data) {
-        const { messageId, sessionId, projectConfigId, recipientNumber, type } = data;
+        const { messageId, sessionId, broadcastId, projectConfigId, recipientNumber, type, } = data;
         console.log(data, 'data');
         try {
             const config = await this.projectService.getConfigurationById(projectConfigId);
@@ -62,9 +75,9 @@ let MessagingConsumer = MessagingConsumer_1 = class MessagingConsumer {
                         },
                     });
                 }
-                if (sessionId) {
-                    await this.sessionModel.updateOne({ _id: new mongoose_2.Types.ObjectId(sessionId) }, { $inc: { 'counters.sent': 1 } });
-                }
+                await this.updateCounters(sessionId, broadcastId, {
+                    'counters.sent': 1,
+                });
                 this.logger.log(`Text message sent to ${recipientNumber} (metaId: ${metaMessageId})`);
                 return;
             }
@@ -81,9 +94,9 @@ let MessagingConsumer = MessagingConsumer_1 = class MessagingConsumer {
                         },
                     });
                 }
-                if (sessionId) {
-                    await this.sessionModel.updateOne({ _id: new mongoose_2.Types.ObjectId(sessionId) }, { $inc: { 'counters.sent': 1 } });
-                }
+                await this.updateCounters(sessionId, broadcastId, {
+                    'counters.sent': 1,
+                });
                 this.logger.log(`Media (${type}) sent to ${recipientNumber} (metaId: ${metaMessageId})`);
                 return;
             }
@@ -112,6 +125,19 @@ let MessagingConsumer = MessagingConsumer_1 = class MessagingConsumer {
                     });
                 }
             }
+            if (broadcastId) {
+                const broadcast = await this.broadcastModel.findById(broadcastId);
+                if (broadcast) {
+                    const newSentCount = broadcast.counters.sent + 1;
+                    const isComplete = newSentCount >= broadcast.totalRecipients;
+                    await this.broadcastModel.updateOne({ _id: new mongoose_2.Types.ObjectId(broadcastId) }, {
+                        $inc: { 'counters.sent': 1 },
+                        ...(isComplete
+                            ? { status: 'completed', completedAt: new Date() }
+                            : {}),
+                    });
+                }
+            }
             this.logger.log(`Template message sent to ${recipientNumber} (metaId: ${metaMessageId})`);
         }
         catch (error) {
@@ -129,9 +155,9 @@ let MessagingConsumer = MessagingConsumer_1 = class MessagingConsumer {
                     },
                 });
             }
-            if (sessionId) {
-                await this.sessionModel.updateOne({ _id: new mongoose_2.Types.ObjectId(sessionId) }, { $inc: { 'counters.failed': 1 } });
-            }
+            await this.updateCounters(sessionId, broadcastId, {
+                'counters.failed': 1,
+            });
             throw error;
         }
     }
@@ -141,8 +167,10 @@ exports.MessagingConsumer = MessagingConsumer = MessagingConsumer_1 = __decorate
     (0, common_1.Injectable)(),
     __param(0, (0, mongoose_1.InjectModel)(message_schema_1.Message.name)),
     __param(1, (0, mongoose_1.InjectModel)(message_session_schema_1.MessageSession.name)),
-    __param(2, (0, common_1.Inject)(consumer_interface_1.QUEUE_CONSUMER)),
+    __param(2, (0, mongoose_1.InjectModel)(broadcast_schema_1.Broadcast.name)),
+    __param(3, (0, common_1.Inject)(consumer_interface_1.QUEUE_CONSUMER)),
     __metadata("design:paramtypes", [mongoose_2.Model,
+        mongoose_2.Model,
         mongoose_2.Model, Object, meta_api_service_1.MetaApiService,
         project_service_1.ProjectService,
         template_builder_service_1.TemplateBuilderService])

@@ -5,6 +5,8 @@ export declare class SendSingleDto {
     params?: Record<string, any>;
     language?: string;
     scheduledAt?: string;
+    skipBroadcast?: boolean;
+    broadcastName?: string;
 }
 export declare class SendBulkDto {
     projectConfigId: string;
@@ -17,6 +19,8 @@ export declare class SendBulkDto {
     params?: Record<string, any>;
     language?: string;
     scheduledAt?: string;
+    skipBroadcast?: boolean;
+    broadcastName?: string;
 }
 export declare class SendTextDto {
     projectConfigId: string;

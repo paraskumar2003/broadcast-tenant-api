@@ -14,6 +14,7 @@ const mongoose_1 = require("@nestjs/mongoose");
 const mongoose_2 = require("mongoose");
 let Message = class Message {
     sessionId;
+    broadcastId;
     projectConfigId;
     recipientNumber;
     metaMessageId;
@@ -39,6 +40,15 @@ __decorate([
     }),
     __metadata("design:type", Object)
 ], Message.prototype, "sessionId", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({
+        type: mongoose_2.Types.ObjectId,
+        ref: 'Broadcast',
+        index: true,
+        default: null,
+    }),
+    __metadata("design:type", Object)
+], Message.prototype, "broadcastId", void 0);
 __decorate([
     (0, mongoose_1.Prop)({
         type: mongoose_2.Types.ObjectId,

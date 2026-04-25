@@ -11,6 +11,10 @@ import {
   MessageSession,
   MessageSessionDocument,
 } from './schemas/message-session.schema';
+import {
+  Broadcast,
+  BroadcastDocument,
+} from './schemas/broadcast.schema';
 import { Message, MessageDocument } from './schemas/message.schema';
 import { Contact, ContactDocument } from '../contact/schemas/contact.schema';
 import {
@@ -30,6 +34,7 @@ import {
 export interface MessageJobPayload {
   messageId: string;
   sessionId: string;
+  broadcastId: string;
   projectConfigId: string;
   recipientNumber: string;
   templateName: string;
@@ -49,6 +54,8 @@ export class MessagingService {
   constructor(
     @InjectModel(MessageSession.name)
     private sessionModel: Model<MessageSessionDocument>,
+    @InjectModel(Broadcast.name)
+    private broadcastModel: Model<BroadcastDocument>,
     @InjectModel(Message.name) private messageModel: Model<MessageDocument>,
     @InjectModel(Contact.name) private contactModel: Model<ContactDocument>,
     @InjectModel(ContactTagging.name)
@@ -59,23 +66,53 @@ export class MessagingService {
     private readonly projectService: ProjectService,
   ) {}
 
+  private generateBroadcastName(): string {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `Broadcast ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  }
+
   /**
    * Send a template message to a single recipient.
    */
   async sendSingle(dto: SendSingleDto) {
-    const session = await this.sessionModel.create({
-      projectConfigId: new Types.ObjectId(dto.projectConfigId),
-      templateName: dto.template.name,
-      templatePayload: dto.template,
-      language: dto.language || 'en_US',
-      totalRecipients: 1,
-      status: 'processing',
-      scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
-    });
+    const projId = new Types.ObjectId(dto.projectConfigId);
+    const skip = dto.skipBroadcast === true;
+
+    let broadcastId: Types.ObjectId | null = null;
+    let sessionId: Types.ObjectId | null = null;
+
+    if (!skip) {
+      // Create broadcast record
+      const broadcast = await this.broadcastModel.create({
+        projectConfigId: projId,
+        name: dto.broadcastName?.trim() || this.generateBroadcastName(),
+        templateName: dto.template.name,
+        templatePayload: dto.template,
+        language: dto.language || 'en_US',
+        totalRecipients: 1,
+        status: 'processing',
+        scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
+      });
+      broadcastId = broadcast._id as Types.ObjectId;
+
+      // Create session linked to broadcast
+      const session = await this.sessionModel.create({
+        projectConfigId: projId,
+        templateName: dto.template.name,
+        templatePayload: dto.template,
+        language: dto.language || 'en_US',
+        totalRecipients: 1,
+        status: 'processing',
+        scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
+      });
+      sessionId = session._id as Types.ObjectId;
+    }
 
     const message = await this.messageModel.create({
-      sessionId: session._id,
-      projectConfigId: new Types.ObjectId(dto.projectConfigId),
+      sessionId,
+      broadcastId,
+      projectConfigId: projId,
       recipientNumber: dto.number,
       templateName: dto.template.name,
       language: dto.language || 'en_US',
@@ -83,14 +120,27 @@ export class MessagingService {
       statusHistory: [{ status: 'queued', timestamp: new Date() }],
     });
 
-    await this.sessionModel.updateOne(
-      { _id: session._id },
-      { $inc: { 'counters.queued': 1 } },
-    );
+    if (sessionId) {
+      await this.sessionModel.updateOne(
+        { _id: sessionId },
+        { $inc: { 'counters.queued': 1 } },
+      );
+    }
+    if (broadcastId) {
+      await this.broadcastModel.updateOne(
+        { _id: broadcastId },
+        { $inc: { 'counters.queued': 1 } },
+      );
+    }
+
+    const delayMs = dto.scheduledAt
+      ? new Date(dto.scheduledAt).getTime() - Date.now()
+      : undefined;
 
     const payload: MessageJobPayload = {
       messageId: message._id.toString(),
-      sessionId: session._id.toString(),
+      sessionId: sessionId?.toString() || '',
+      broadcastId: broadcastId?.toString() || '',
       projectConfigId: dto.projectConfigId,
       recipientNumber: dto.number,
       templateName: dto.template.name,
@@ -100,15 +150,15 @@ export class MessagingService {
       type: 'template',
     };
 
-    const delayMs = dto.scheduledAt
-      ? new Date(dto.scheduledAt).getTime() - Date.now()
-      : undefined;
-
     await this.queueService.publish(QUEUE_NAMES.MESSAGE_SEND, payload, {
       delayMs: delayMs && delayMs > 0 ? delayMs : undefined,
     });
 
-    return { sessionId: session._id, messageId: message._id };
+    return {
+      ...(broadcastId ? { broadcastId } : {}),
+      ...(sessionId ? { sessionId } : {}),
+      messageId: message._id,
+    };
   }
 
   /**
@@ -187,9 +237,29 @@ export class MessagingService {
       `send-bulk: ${finalRecipients.length} unique recipients (explicit: ${dto.recipients?.length ?? 0}, tags: ${dto.tagIds?.length ?? 0})`,
     );
 
-    // ─── Create session and messages ────────────────────────────────────
+    // ─── Create broadcast, session, and messages ─────────────────────────
+    const projId = new Types.ObjectId(dto.projectConfigId);
+    const skip = dto.skipBroadcast === true;
+
+    let broadcastId: Types.ObjectId | null = null;
+    let sessionId: Types.ObjectId | null = null;
+
+    if (!skip) {
+      const broadcast = await this.broadcastModel.create({
+        projectConfigId: projId,
+        name: dto.broadcastName?.trim() || this.generateBroadcastName(),
+        templateName: dto.template.name,
+        templatePayload: dto.template,
+        language: dto.language || 'en_US',
+        totalRecipients: finalRecipients.length,
+        status: 'processing',
+        scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
+      });
+      broadcastId = broadcast._id as Types.ObjectId;
+    }
+
     const session = await this.sessionModel.create({
-      projectConfigId: new Types.ObjectId(dto.projectConfigId),
+      projectConfigId: projId,
       templateName: dto.template.name,
       templatePayload: dto.template,
       language: dto.language || 'en_US',
@@ -197,6 +267,7 @@ export class MessagingService {
       status: 'processing',
       scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
     });
+    sessionId = session._id as Types.ObjectId;
 
     const delayMs = dto.scheduledAt
       ? new Date(dto.scheduledAt).getTime() - Date.now()
@@ -204,8 +275,9 @@ export class MessagingService {
 
     const messages = await this.messageModel.insertMany(
       finalRecipients.map((r) => ({
-        sessionId: session._id,
-        projectConfigId: new Types.ObjectId(dto.projectConfigId),
+        sessionId,
+        broadcastId,
+        projectConfigId: projId,
         recipientNumber: r.number,
         templateName: dto.template.name,
         language: dto.language || 'en_US',
@@ -215,14 +287,21 @@ export class MessagingService {
     );
 
     await this.sessionModel.updateOne(
-      { _id: session._id },
+      { _id: sessionId },
       { $inc: { 'counters.queued': messages.length } },
     );
+    if (broadcastId) {
+      await this.broadcastModel.updateOne(
+        { _id: broadcastId },
+        { $inc: { 'counters.queued': messages.length } },
+      );
+    }
 
     const queueItems = messages.map((msg, idx) => ({
       data: {
         messageId: msg._id.toString(),
-        sessionId: session._id.toString(),
+        sessionId: sessionId!.toString(),
+        broadcastId: broadcastId?.toString() || '',
         projectConfigId: dto.projectConfigId,
         recipientNumber: finalRecipients[idx].number,
         templateName: dto.template.name,
@@ -239,7 +318,8 @@ export class MessagingService {
     await this.queueService.publishBulk(QUEUE_NAMES.MESSAGE_SEND, queueItems);
 
     return {
-      sessionId: session._id,
+      ...(broadcastId ? { broadcastId } : {}),
+      sessionId,
       totalQueued: messages.length,
     };
   }
@@ -251,6 +331,7 @@ export class MessagingService {
     const payload: MessageJobPayload = {
       messageId: '',
       sessionId: '',
+      broadcastId: '',
       projectConfigId: dto.projectConfigId,
       recipientNumber: dto.number,
       templateName: '',
@@ -276,9 +357,18 @@ export class MessagingService {
     template: Record<string, any>;
     language?: string;
     scheduledAt?: string;
+    skipBroadcast?: boolean;
+    broadcastName?: string;
   }) {
-    const { fileBuffer, projectConfigId, template, language, scheduledAt } =
-      opts;
+    const {
+      fileBuffer,
+      projectConfigId,
+      template,
+      language,
+      scheduledAt,
+      skipBroadcast,
+      broadcastName,
+    } = opts;
     const projId = new Types.ObjectId(projectConfigId);
 
     // 1. Parse CSV
@@ -336,7 +426,6 @@ export class MessagingService {
     };
 
     // Deduplicate + build per-row params
-    // Map: mobile -> { number, params (all extra columns as key-value) }
     const recipientMap = new Map<
       string,
       { number: string; params: Record<string, string> }
@@ -420,7 +509,24 @@ export class MessagingService {
       `send-bulk-csv: ${finalRecipients.length} unique recipients, ${contactsSynced} contacts synced`,
     );
 
-    // 4. Create session + messages
+    // 4. Create broadcast (optional), session + messages
+    const skip = skipBroadcast === true;
+    let broadcastId: Types.ObjectId | null = null;
+
+    if (!skip) {
+      const broadcast = await this.broadcastModel.create({
+        projectConfigId: projId,
+        name: broadcastName?.trim() || this.generateBroadcastName(),
+        templateName: template.name,
+        templatePayload: template,
+        language: language || 'en_US',
+        totalRecipients: finalRecipients.length,
+        status: 'processing',
+        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+      });
+      broadcastId = broadcast._id as Types.ObjectId;
+    }
+
     const session = await this.sessionModel.create({
       projectConfigId: projId,
       templateName: template.name,
@@ -430,6 +536,7 @@ export class MessagingService {
       status: 'processing',
       scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
     });
+    const sessionId = session._id as Types.ObjectId;
 
     const delayMs = scheduledAt
       ? new Date(scheduledAt).getTime() - Date.now()
@@ -437,7 +544,8 @@ export class MessagingService {
 
     const messages = await this.messageModel.insertMany(
       finalRecipients.map((r) => ({
-        sessionId: session._id,
+        sessionId,
+        broadcastId,
         projectConfigId: projId,
         recipientNumber: r.number,
         templateName: template.name,
@@ -448,14 +556,21 @@ export class MessagingService {
     );
 
     await this.sessionModel.updateOne(
-      { _id: session._id },
+      { _id: sessionId },
       { $inc: { 'counters.queued': messages.length } },
     );
+    if (broadcastId) {
+      await this.broadcastModel.updateOne(
+        { _id: broadcastId },
+        { $inc: { 'counters.queued': messages.length } },
+      );
+    }
 
     const queueItems = messages.map((msg, idx) => ({
       data: {
         messageId: msg._id.toString(),
-        sessionId: session._id.toString(),
+        sessionId: sessionId.toString(),
+        broadcastId: broadcastId?.toString() || '',
         projectConfigId,
         recipientNumber: finalRecipients[idx].number,
         templateName: template.name,
@@ -472,9 +587,58 @@ export class MessagingService {
     await this.queueService.publishBulk(QUEUE_NAMES.MESSAGE_SEND, queueItems);
 
     return {
-      sessionId: session._id,
+      ...(broadcastId ? { broadcastId } : {}),
+      sessionId,
       totalQueued: messages.length,
       contactsSynced,
     };
   }
+
+  /**
+   * List broadcasts for a project with pagination.
+   */
+  async listBroadcasts(
+    projectConfigId: string,
+    page: number,
+    limit: number,
+  ) {
+    const projId = new Types.ObjectId(projectConfigId);
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await Promise.all([
+      this.broadcastModel
+        .find({ projectConfigId: projId })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      this.broadcastModel.countDocuments({ projectConfigId: projId }),
+    ]);
+
+    return {
+      data: data.map((b: any) => ({
+        id: b._id,
+        name: b.name,
+        templateName: b.templateName,
+        status: b.status,
+        recipientsCount: b.totalRecipients,
+        counters: b.counters,
+        deliveredPercentage:
+          b.totalRecipients > 0
+            ? Math.round(
+                (b.counters.delivered / b.totalRecipients) * 1000,
+              ) / 10
+            : 0,
+        scheduledAt: b.scheduledAt,
+        createdAt: b.createdAt,
+      })),
+      pagination: {
+        page,
+        limit,
+        total,
+        hasNext: skip + limit < total,
+      },
+    };
+  }
 }
+

@@ -15,6 +15,7 @@ const messaging_consumer_1 = require("./messaging.consumer");
 const template_builder_service_1 = require("./template-builder.service");
 const message_schema_1 = require("./schemas/message.schema");
 const message_session_schema_1 = require("./schemas/message-session.schema");
+const broadcast_schema_1 = require("./schemas/broadcast.schema");
 const contact_schema_1 = require("../contact/schemas/contact.schema");
 const meta_api_module_1 = require("../meta-api/meta-api.module");
 const project_module_1 = require("../project/project.module");
@@ -28,6 +29,7 @@ exports.MessagingModule = MessagingModule = __decorate([
             mongoose_1.MongooseModule.forFeature([
                 { name: message_schema_1.Message.name, schema: message_schema_1.MessageSchema },
                 { name: message_session_schema_1.MessageSession.name, schema: message_session_schema_1.MessageSessionSchema },
+                { name: broadcast_schema_1.Broadcast.name, schema: broadcast_schema_1.BroadcastSchema },
                 { name: contact_schema_1.Contact.name, schema: contact_schema_1.ContactSchema },
             ]),
             meta_api_module_1.MetaApiModule,

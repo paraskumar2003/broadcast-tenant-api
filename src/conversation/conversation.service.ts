@@ -201,6 +201,7 @@ export class ConversationService {
     const payload: MessageJobPayload = {
       messageId: message._id.toString(),
       sessionId: '',
+      broadcastId: '',
       projectConfigId: conversation.projectId.toString(),
       recipientNumber: conversation.mobile,
       templateName: '',

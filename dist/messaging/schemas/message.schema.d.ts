@@ -2,6 +2,7 @@ import { Document, Types } from 'mongoose';
 export type MessageDocument = Message & Document;
 export declare class Message {
     sessionId: Types.ObjectId | null;
+    broadcastId: Types.ObjectId | null;
     projectConfigId: Types.ObjectId;
     recipientNumber: string;
     metaMessageId: string;
@@ -41,6 +42,15 @@ export declare const MessageSchema: import("mongoose").Schema<Message, import("m
     id: string;
 }, {
     sessionId?: import("mongoose").SchemaDefinitionProperty<Types.ObjectId | null, Message, Document<unknown, {}, Message, {
+        id: string;
+    }, import("mongoose").DefaultSchemaOptions> & Omit<Message & {
+        _id: Types.ObjectId;
+    } & {
+        __v: number;
+    }, "id"> & {
+        id: string;
+    }> | undefined;
+    broadcastId?: import("mongoose").SchemaDefinitionProperty<Types.ObjectId | null, Message, Document<unknown, {}, Message, {
         id: string;
     }, import("mongoose").DefaultSchemaOptions> & Omit<Message & {
         _id: Types.ObjectId;

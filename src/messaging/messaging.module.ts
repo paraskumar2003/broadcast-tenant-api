@@ -9,6 +9,10 @@ import {
   MessageSession,
   MessageSessionSchema,
 } from './schemas/message-session.schema';
+import {
+  Broadcast,
+  BroadcastSchema,
+} from './schemas/broadcast.schema';
 import { Contact, ContactSchema } from '../contact/schemas/contact.schema';
 import { MetaApiModule } from '../meta-api/meta-api.module';
 import { ProjectModule } from '../project/project.module';
@@ -19,6 +23,7 @@ import { TaggingModule } from '../tagging/tagging.module';
     MongooseModule.forFeature([
       { name: Message.name, schema: MessageSchema },
       { name: MessageSession.name, schema: MessageSessionSchema },
+      { name: Broadcast.name, schema: BroadcastSchema },
       { name: Contact.name, schema: ContactSchema },
     ]),
     MetaApiModule,

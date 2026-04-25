@@ -124,6 +124,7 @@ let ConversationService = ConversationService_1 = class ConversationService {
         const payload = {
             messageId: message._id.toString(),
             sessionId: '',
+            broadcastId: '',
             projectConfigId: conversation.projectId.toString(),
             recipientNumber: conversation.mobile,
             templateName: '',
