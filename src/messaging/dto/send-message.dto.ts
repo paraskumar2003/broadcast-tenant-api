@@ -39,14 +39,31 @@ export class SendBulkDto {
   @IsObject()
   template: Record<string, any>;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Array of recipient objects with number and params',
   })
+  @IsOptional()
   @IsArray()
-  recipients: Array<{
+  recipients?: Array<{
     number: string;
     params?: Record<string, any>;
   }>;
+
+  @ApiPropertyOptional({
+    description:
+      'Array of tag IDs — all active contacts mapped to these tags will be included (deduplicated)',
+  })
+  @IsOptional()
+  @IsArray()
+  tagIds?: string[];
+
+  @ApiPropertyOptional({
+    description:
+      'Default template parameters applied to all tag-resolved contacts',
+  })
+  @IsOptional()
+  @IsObject()
+  params?: Record<string, any>;
 
   @ApiPropertyOptional({ description: 'Language code', default: 'en_US' })
   @IsOptional()

@@ -12,6 +12,11 @@ export declare class MessagingController {
         sessionId: import("mongoose").Types.ObjectId;
         totalQueued: number;
     }>>;
+    sendBulkCsv(file: Express.Multer.File, projectConfigId: string, templateStr: string, language?: string, scheduledAt?: string): Promise<ApiResponseDto<{
+        sessionId: import("mongoose").Types.ObjectId;
+        totalQueued: number;
+        contactsSynced: number;
+    }>>;
     sendText(dto: SendTextDto): Promise<ApiResponseDto<{
         status: boolean;
         message: string;

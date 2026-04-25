@@ -31,7 +31,67 @@ export class ContactService {
 
     @InjectModel(Tag.name)
     private readonly tagModel: Model<TagDocument>,
-  ) { }
+  ) {}
+
+  // ─── Tag Summary (tag list with active contact counts) ───────────────────
+
+  async getTagsSummary(projectId: string) {
+    const projId = new Types.ObjectId(projectId);
+
+    const summary = await this.contactTaggingModel.aggregate([
+      { $match: { projectId: projId } },
+      // Join with contacts to check isActive
+      {
+        $lookup: {
+          from: 'contacts',
+          localField: 'contactId',
+          foreignField: '_id',
+          as: 'contact',
+        },
+      },
+      { $unwind: '$contact' },
+      { $match: { 'contact.isActive': true } },
+      // Group by tagId and count
+      {
+        $group: {
+          _id: '$tagId',
+          contactCount: { $sum: 1 },
+        },
+      },
+      // Join with tags for name/color
+      {
+        $lookup: {
+          from: 'tags',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'tag',
+        },
+      },
+      { $unwind: '$tag' },
+      // Shape output
+      {
+        $project: {
+          _id: 0,
+          tagId: '$_id',
+          name: '$tag.name',
+          color: '$tag.color',
+          contactCount: 1,
+        },
+      },
+      { $sort: { name: 1 } },
+    ]);
+
+    // Also include tags with zero contacts
+    const allTags = await this.tagModel.find({ projectId: projId }).lean();
+    const tagMap = new Map(summary.map((s) => [s.tagId.toString(), s]));
+
+    return allTags.map((tag) => ({
+      tagId: tag._id,
+      name: tag.name,
+      color: tag.color,
+      contactCount: tagMap.get(tag._id.toString())?.contactCount ?? 0,
+    }));
+  }
 
   // ─── Create Single Contact ────────────────────────────────────────────────
 
@@ -42,7 +102,7 @@ export class ContactService {
     try {
       contact = await this.contactModel.create({
         projectId,
-        name: dto?.name ?? "Unknown User",
+        name: dto?.name ?? 'Unknown User',
         mobile: dto.mobile,
         metadata: dto.metadata ?? {},
       });
@@ -57,7 +117,11 @@ export class ContactService {
 
     // Attach optional tags
     if (dto.tagIds && dto.tagIds.length > 0) {
-      await this.attachTagsToContact(projectId, contact._id as Types.ObjectId, dto.tagIds);
+      await this.attachTagsToContact(
+        projectId,
+        contact._id as Types.ObjectId,
+        dto.tagIds,
+      );
     }
 
     return contact;
@@ -94,7 +158,11 @@ export class ContactService {
     }
 
     const [contacts, total] = await Promise.all([
-      this.contactModel.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      this.contactModel
+        .find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
       this.contactModel.countDocuments(filter),
     ]);
 
@@ -125,7 +193,10 @@ export class ContactService {
   // ─── Get Single Contact ───────────────────────────────────────────────────
 
   async findById(id: string) {
-    const contact = await this.contactModel.findOne({ _id: id, isActive: true });
+    const contact = await this.contactModel.findOne({
+      _id: id,
+      isActive: true,
+    });
     if (!contact) throw new NotFoundException('Contact not found');
 
     const tagMappings = await this.contactTaggingModel
@@ -164,9 +235,9 @@ export class ContactService {
       // Detach removed tags
       removeTagIds?.length
         ? this.contactTaggingModel.deleteMany({
-          contactId: contactObjectId,
-          tagId: { $in: removeTagIds.map((t) => new Types.ObjectId(t)) },
-        })
+            contactId: contactObjectId,
+            tagId: { $in: removeTagIds.map((t) => new Types.ObjectId(t)) },
+          })
         : Promise.resolve(),
     ]);
 
@@ -215,7 +286,7 @@ export class ContactService {
 
     // Parse CSV → array of records
     const records: Record<string, string>[] = parse(fileBuffer, {
-      columns: true,         // first row = headers
+      columns: true, // first row = headers
       skip_empty_lines: true,
       trim: true,
     });
@@ -227,7 +298,10 @@ export class ContactService {
     const getTagId = async (name: string): Promise<Types.ObjectId | null> => {
       const key = name.toLowerCase().trim();
       if (tagCache.has(key)) return tagCache.get(key)!;
-      const tag = await this.tagModel.findOne({ projectId: projId, name: { $regex: new RegExp(`^${key}$`, 'i') } });
+      const tag = await this.tagModel.findOne({
+        projectId: projId,
+        name: { $regex: new RegExp(`^${key}$`, 'i') },
+      });
       if (!tag) return null;
       tagCache.set(key, tag._id as Types.ObjectId);
       return tag._id as Types.ObjectId;
@@ -239,7 +313,10 @@ export class ContactService {
 
       // Validate required fields
       if (!row.mobile?.trim()) {
-        result.errors.push({ row: rowNum, reason: 'Missing required fields: mobile' });
+        result.errors.push({
+          row: rowNum,
+          reason: 'Missing required fields: mobile',
+        });
         result.skipped++;
         continue;
       }
@@ -251,10 +328,14 @@ export class ContactService {
           { projectId: projId, mobile: row.mobile.trim() },
           {
             $set: {
-              name: row.name?.trim() ?? "Unknown User",
+              name: row.name?.trim() ?? 'Unknown User',
               metadata: this.extractMetadata(row),
             },
-            $setOnInsert: { projectId: projId, mobile: row.mobile.trim(), isActive: true },
+            $setOnInsert: {
+              projectId: projId,
+              mobile: row.mobile.trim(),
+              isActive: true,
+            },
           },
           { upsert: true, new: true },
         );
@@ -266,7 +347,10 @@ export class ContactService {
 
       // Attach tags (if any)
       const rawTags: string = row.tags || '';
-      const tagNames = rawTags.split(',').map((t) => t.trim()).filter(Boolean);
+      const tagNames = rawTags
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean);
 
       for (const tagName of tagNames) {
         let tagId = await getTagId(tagName);
@@ -289,7 +373,10 @@ export class ContactService {
         } catch (err: any) {
           if (err.code !== 11000) {
             // 11000 = duplicate (already attached) — safe to ignore
-            result.errors.push({ row: rowNum, reason: `Tag attach error: ${err.message}` });
+            result.errors.push({
+              row: rowNum,
+              reason: `Tag attach error: ${err.message}`,
+            });
           }
         }
       }

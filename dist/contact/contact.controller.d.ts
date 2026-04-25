@@ -6,6 +6,12 @@ export declare class ContactController {
     private readonly contactService;
     constructor(contactService: ContactService);
     create(dto: CreateContactDto): Promise<ApiResponseDto<import("./schemas/contact.schema").ContactDocument>>;
+    tagsSummary(projectId: string): Promise<ApiResponseDto<{
+        tagId: import("mongoose").Types.ObjectId;
+        name: string;
+        color: string;
+        contactCount: any;
+    }[]>>;
     listByProject(projectId: string, query: ListContactsQueryDto): Promise<ApiResponseDto<{
         data: {
             tags: any[];

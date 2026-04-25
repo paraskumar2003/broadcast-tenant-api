@@ -58,6 +58,8 @@ class SendBulkDto {
     projectConfigId;
     template;
     recipients;
+    tagIds;
+    params;
     language;
     scheduledAt;
 }
@@ -73,12 +75,29 @@ __decorate([
     __metadata("design:type", Object)
 ], SendBulkDto.prototype, "template", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({
+    (0, swagger_1.ApiPropertyOptional)({
         description: 'Array of recipient objects with number and params',
     }),
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsArray)(),
     __metadata("design:type", Array)
 ], SendBulkDto.prototype, "recipients", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Array of tag IDs — all active contacts mapped to these tags will be included (deduplicated)',
+    }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsArray)(),
+    __metadata("design:type", Array)
+], SendBulkDto.prototype, "tagIds", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Default template parameters applied to all tag-resolved contacts',
+    }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsObject)(),
+    __metadata("design:type", Object)
+], SendBulkDto.prototype, "params", void 0);
 __decorate([
     (0, swagger_1.ApiPropertyOptional)({ description: 'Language code', default: 'en_US' }),
     (0, class_validator_1.IsOptional)(),

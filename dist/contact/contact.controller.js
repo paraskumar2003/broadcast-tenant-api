@@ -33,6 +33,10 @@ let ContactController = class ContactController {
         const data = await this.contactService.create(dto);
         return api_response_dto_1.ApiResponseDto.success('Contact created successfully', data);
     }
+    async tagsSummary(projectId) {
+        const data = await this.contactService.getTagsSummary(projectId);
+        return api_response_dto_1.ApiResponseDto.success('Tags summary fetched', data);
+    }
     async listByProject(projectId, query) {
         const data = await this.contactService.findByProject(projectId, query);
         return api_response_dto_1.ApiResponseDto.success('Contacts fetched successfully', data);
@@ -81,6 +85,16 @@ __decorate([
     __metadata("design:paramtypes", [contact_dto_1.CreateContactDto]),
     __metadata("design:returntype", Promise)
 ], ContactController.prototype, "create", null);
+__decorate([
+    (0, common_1.Get)('project/:projectId/tags-summary'),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Get all tags for a project with the count of active contacts mapped to each tag',
+    }),
+    __param(0, (0, common_1.Param)('projectId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], ContactController.prototype, "tagsSummary", null);
 __decorate([
     (0, common_1.Get)('project/:projectId'),
     (0, swagger_1.ApiOperation)({

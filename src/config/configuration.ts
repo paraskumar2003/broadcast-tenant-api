@@ -14,7 +14,7 @@ export default () => ({
   jwt: {
     secret: process.env.JWT_SECRET,
     refreshSecret: process.env.JWT_REFRESH_SECRET,
-    accessExpiry: parseInt(process.env.JWT_ACCESS_EXPIRY ?? '900', 10),     // seconds (default 15m)
+    accessExpiry: parseInt(process.env.JWT_ACCESS_EXPIRY ?? '900', 10), // seconds (default 15m)
     refreshExpiry: parseInt(process.env.JWT_REFRESH_EXPIRY ?? '604800', 10), // seconds (default 7d)
   },
 

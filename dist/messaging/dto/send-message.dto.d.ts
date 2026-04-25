@@ -9,10 +9,12 @@ export declare class SendSingleDto {
 export declare class SendBulkDto {
     projectConfigId: string;
     template: Record<string, any>;
-    recipients: Array<{
+    recipients?: Array<{
         number: string;
         params?: Record<string, any>;
     }>;
+    tagIds?: string[];
+    params?: Record<string, any>;
     language?: string;
     scheduledAt?: string;
 }

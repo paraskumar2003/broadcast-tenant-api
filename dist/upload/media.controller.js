@@ -89,7 +89,10 @@ __decorate([
                 file: { type: 'string', format: 'binary' },
                 projectId: { type: 'string', example: '6482c4adda0e29b69bfec072' },
                 alt: { type: 'string', example: 'Campaign banner' },
-                mediaType: { type: 'string', enum: ['image', 'video', 'document', 'other'] },
+                mediaType: {
+                    type: 'string',
+                    enum: ['image', 'video', 'document', 'other'],
+                },
             },
             required: ['file', 'projectId'],
         },
@@ -104,7 +107,9 @@ __decorate([
 __decorate([
     (0, common_1.Post)('upload/multiple'),
     (0, roles_decorator_1.Roles)(user_schema_1.UserRole.MASTER, user_schema_1.UserRole.SUPER),
-    (0, swagger_1.ApiOperation)({ summary: 'Upload multiple files and add to project gallery (max 10)' }),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Upload multiple files and add to project gallery (max 10)',
+    }),
     (0, swagger_1.ApiConsumes)('multipart/form-data'),
     (0, swagger_1.ApiBody)({
         schema: {

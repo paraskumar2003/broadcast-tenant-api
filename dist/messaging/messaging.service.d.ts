@@ -1,6 +1,9 @@
 import { Model, Types } from 'mongoose';
 import { MessageSessionDocument } from './schemas/message-session.schema';
 import { MessageDocument } from './schemas/message.schema';
+import { ContactDocument } from '../contact/schemas/contact.schema';
+import { ContactTaggingDocument } from '../tagging/schemas/contact-tagging.schema';
+import { TagDocument } from '../tagging/schemas/tag.schema';
 import { ProjectService } from '../project/project.service';
 import type { IQueueService } from '../queue/queue.interface';
 import { SendSingleDto, SendBulkDto, SendTextDto } from './dto/send-message.dto';
@@ -21,10 +24,13 @@ export interface MessageJobPayload {
 export declare class MessagingService {
     private sessionModel;
     private messageModel;
+    private contactModel;
+    private contactTaggingModel;
+    private tagModel;
     private readonly queueService;
     private readonly projectService;
     private readonly logger;
-    constructor(sessionModel: Model<MessageSessionDocument>, messageModel: Model<MessageDocument>, queueService: IQueueService, projectService: ProjectService);
+    constructor(sessionModel: Model<MessageSessionDocument>, messageModel: Model<MessageDocument>, contactModel: Model<ContactDocument>, contactTaggingModel: Model<ContactTaggingDocument>, tagModel: Model<TagDocument>, queueService: IQueueService, projectService: ProjectService);
     sendSingle(dto: SendSingleDto): Promise<{
         sessionId: Types.ObjectId;
         messageId: Types.ObjectId;
@@ -36,5 +42,16 @@ export declare class MessagingService {
     sendText(dto: SendTextDto): Promise<{
         status: boolean;
         message: string;
+    }>;
+    sendBulkCsv(opts: {
+        fileBuffer: Buffer;
+        projectConfigId: string;
+        template: Record<string, any>;
+        language?: string;
+        scheduledAt?: string;
+    }): Promise<{
+        sessionId: Types.ObjectId;
+        totalQueued: number;
+        contactsSynced: number;
     }>;
 }

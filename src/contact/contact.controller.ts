@@ -54,6 +54,17 @@ export class ContactController {
     return ApiResponseDto.success('Contact created successfully', data);
   }
 
+  // ─── Tag Summary (tags with contact counts) ─────────────────────────────
+
+  @Get('project/:projectId/tags-summary')
+  @ApiOperation({
+    summary: 'Get all tags for a project with the count of active contacts mapped to each tag',
+  })
+  async tagsSummary(@Param('projectId') projectId: string) {
+    const data = await this.contactService.getTagsSummary(projectId);
+    return ApiResponseDto.success('Tags summary fetched', data);
+  }
+
   // ─── List Contacts by Project ─────────────────────────────────────────────
 
   @Get('project/:projectId')

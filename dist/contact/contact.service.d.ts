@@ -8,6 +8,12 @@ export declare class ContactService {
     private readonly contactTaggingModel;
     private readonly tagModel;
     constructor(contactModel: Model<ContactDocument>, contactTaggingModel: Model<ContactTaggingDocument>, tagModel: Model<TagDocument>);
+    getTagsSummary(projectId: string): Promise<{
+        tagId: Types.ObjectId;
+        name: string;
+        color: string;
+        contactCount: any;
+    }[]>;
     create(dto: CreateContactDto): Promise<ContactDocument>;
     findByProject(projectId: string, query: ListContactsQueryDto): Promise<{
         data: {
