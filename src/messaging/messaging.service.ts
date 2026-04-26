@@ -11,10 +11,7 @@ import {
   MessageSession,
   MessageSessionDocument,
 } from './schemas/message-session.schema';
-import {
-  Broadcast,
-  BroadcastDocument,
-} from './schemas/broadcast.schema';
+import { Broadcast, BroadcastDocument } from './schemas/broadcast.schema';
 import { Message, MessageDocument } from './schemas/message.schema';
 import { Contact, ContactDocument } from '../contact/schemas/contact.schema';
 import {
@@ -297,6 +294,8 @@ export class MessagingService {
       );
     }
 
+    console.log(messages);
+
     const queueItems = messages.map((msg, idx) => ({
       data: {
         messageId: msg._id.toString(),
@@ -359,6 +358,7 @@ export class MessagingService {
     scheduledAt?: string;
     skipBroadcast?: boolean;
     broadcastName?: string;
+    variableMapping?: Record<string, string>;
   }) {
     const {
       fileBuffer,
@@ -368,6 +368,7 @@ export class MessagingService {
       scheduledAt,
       skipBroadcast,
       broadcastName,
+      variableMapping,
     } = opts;
     const projId = new Types.ObjectId(projectConfigId);
 
@@ -486,15 +487,32 @@ export class MessagingService {
         }
       }
 
-      // Collect recipient with all CSV columns as params
+      // Collect recipient — use variableMapping to build positional params
       if (!recipientMap.has(mobile)) {
         const params: Record<string, string> = {};
-        for (const h of rawHeaders) {
-          const key = h.toLowerCase().trim();
-          if (key !== 'mobile' && key !== 'phone' && key !== 'number') {
-            params[h] = row[h] || '';
+
+        if (variableMapping && Object.keys(variableMapping).length > 0) {
+          // variableMapping: { "1": "name", "2": "order_id", ... }
+          // Build positional params: { "1": row["name"], "2": row["order_id"] }
+          for (const [position, columnName] of Object.entries(
+            variableMapping,
+          )) {
+            // Find the original header matching columnName (case-insensitive)
+            const matchedHeader = rawHeaders.find(
+              (h) => h.toLowerCase().trim() === columnName.toLowerCase().trim(),
+            );
+            params[position] = matchedHeader ? row[matchedHeader] || '' : '';
+          }
+        } else {
+          // Fallback: dump all non-mobile columns as raw params
+          for (const h of rawHeaders) {
+            const key = h.toLowerCase().trim();
+            if (key !== 'mobile' && key !== 'phone' && key !== 'number') {
+              params[h] = row[h] || '';
+            }
           }
         }
+
         recipientMap.set(mobile, { number: mobile, params });
       }
     }
@@ -597,11 +615,7 @@ export class MessagingService {
   /**
    * List broadcasts for a project with pagination.
    */
-  async listBroadcasts(
-    projectConfigId: string,
-    page: number,
-    limit: number,
-  ) {
+  async listBroadcasts(projectConfigId: string, page: number, limit: number) {
     const projId = new Types.ObjectId(projectConfigId);
     const skip = (page - 1) * limit;
 
@@ -625,9 +639,7 @@ export class MessagingService {
         counters: b.counters,
         deliveredPercentage:
           b.totalRecipients > 0
-            ? Math.round(
-                (b.counters.delivered / b.totalRecipients) * 1000,
-              ) / 10
+            ? Math.round((b.counters.delivered / b.totalRecipients) * 1000) / 10
             : 0,
         scheduledAt: b.scheduledAt,
         createdAt: b.createdAt,
@@ -641,4 +653,3 @@ export class MessagingService {
     };
   }
 }
-

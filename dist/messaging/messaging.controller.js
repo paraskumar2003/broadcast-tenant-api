@@ -34,7 +34,7 @@ let MessagingController = class MessagingController {
         const data = await this.messagingService.sendBulk(dto);
         return api_response_dto_1.ApiResponseDto.success('Bulk messages queued successfully', data);
     }
-    async sendBulkCsv(file, projectConfigId, templateStr, language, scheduledAt, skipBroadcast, broadcastName) {
+    async sendBulkCsv(file, projectConfigId, templateStr, language, scheduledAt, skipBroadcast, broadcastName, variableMappingStr) {
         if (!file)
             throw new common_1.BadRequestException('No CSV file provided');
         if (!projectConfigId)
@@ -51,6 +51,15 @@ let MessagingController = class MessagingController {
         catch {
             throw new common_1.BadRequestException('template must be valid JSON');
         }
+        let variableMapping;
+        if (variableMappingStr) {
+            try {
+                variableMapping = JSON.parse(variableMappingStr);
+            }
+            catch {
+                throw new common_1.BadRequestException('variableMapping must be valid JSON');
+            }
+        }
         const data = await this.messagingService.sendBulkCsv({
             fileBuffer: file.buffer,
             projectConfigId,
@@ -59,6 +68,7 @@ let MessagingController = class MessagingController {
             scheduledAt,
             skipBroadcast: skipBroadcast === 'true',
             broadcastName,
+            variableMapping,
         });
         return api_response_dto_1.ApiResponseDto.success('CSV broadcast queued', data);
     }
@@ -126,6 +136,10 @@ __decorate([
                     type: 'string',
                     description: 'Broadcast name (auto-generated if empty)',
                 },
+                variableMapping: {
+                    type: 'string',
+                    description: 'JSON mapping of template variable positions to CSV column names, e.g. {"1":"name","2":"order_id"}',
+                },
             },
             required: ['file', 'projectConfigId', 'template'],
         },
@@ -138,8 +152,9 @@ __decorate([
     __param(4, (0, common_1.Body)('scheduledAt')),
     __param(5, (0, common_1.Body)('skipBroadcast')),
     __param(6, (0, common_1.Body)('broadcastName')),
+    __param(7, (0, common_1.Body)('variableMapping')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, String, String, String, String, String]),
+    __metadata("design:paramtypes", [Object, String, String, String, String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], MessagingController.prototype, "sendBulkCsv", null);
 __decorate([

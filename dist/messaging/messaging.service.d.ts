@@ -57,6 +57,7 @@ export declare class MessagingService {
         scheduledAt?: string;
         skipBroadcast?: boolean;
         broadcastName?: string;
+        variableMapping?: Record<string, string>;
     }): Promise<{
         sessionId: Types.ObjectId;
         totalQueued: number;

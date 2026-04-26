@@ -14,7 +14,7 @@ export declare class MessagingController {
         totalQueued: number;
         broadcastId?: import("mongoose").Types.ObjectId | undefined;
     }>>;
-    sendBulkCsv(file: Express.Multer.File, projectConfigId: string, templateStr: string, language?: string, scheduledAt?: string, skipBroadcast?: string, broadcastName?: string): Promise<ApiResponseDto<{
+    sendBulkCsv(file: Express.Multer.File, projectConfigId: string, templateStr: string, language?: string, scheduledAt?: string, skipBroadcast?: string, broadcastName?: string, variableMappingStr?: string): Promise<ApiResponseDto<{
         sessionId: import("mongoose").Types.ObjectId;
         totalQueued: number;
         contactsSynced: number;

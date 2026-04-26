@@ -207,6 +207,7 @@ let MessagingService = MessagingService_1 = class MessagingService {
         if (broadcastId) {
             await this.broadcastModel.updateOne({ _id: broadcastId }, { $inc: { 'counters.queued': messages.length } });
         }
+        console.log(messages);
         const queueItems = messages.map((msg, idx) => ({
             data: {
                 messageId: msg._id.toString(),
@@ -249,7 +250,7 @@ let MessagingService = MessagingService_1 = class MessagingService {
         return { status: true, message: 'Text message queued' };
     }
     async sendBulkCsv(opts) {
-        const { fileBuffer, projectConfigId, template, language, scheduledAt, skipBroadcast, broadcastName, } = opts;
+        const { fileBuffer, projectConfigId, template, language, scheduledAt, skipBroadcast, broadcastName, variableMapping, } = opts;
         const projId = new mongoose_2.Types.ObjectId(projectConfigId);
         const records = (0, sync_1.parse)(fileBuffer, {
             columns: true,
@@ -342,10 +343,18 @@ let MessagingService = MessagingService_1 = class MessagingService {
             }
             if (!recipientMap.has(mobile)) {
                 const params = {};
-                for (const h of rawHeaders) {
-                    const key = h.toLowerCase().trim();
-                    if (key !== 'mobile' && key !== 'phone' && key !== 'number') {
-                        params[h] = row[h] || '';
+                if (variableMapping && Object.keys(variableMapping).length > 0) {
+                    for (const [position, columnName] of Object.entries(variableMapping)) {
+                        const matchedHeader = rawHeaders.find((h) => h.toLowerCase().trim() === columnName.toLowerCase().trim());
+                        params[position] = matchedHeader ? row[matchedHeader] || '' : '';
+                    }
+                }
+                else {
+                    for (const h of rawHeaders) {
+                        const key = h.toLowerCase().trim();
+                        if (key !== 'mobile' && key !== 'phone' && key !== 'number') {
+                            params[h] = row[h] || '';
+                        }
                     }
                 }
                 recipientMap.set(mobile, { number: mobile, params });
