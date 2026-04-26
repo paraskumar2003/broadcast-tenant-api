@@ -18,6 +18,7 @@ const message_session_schema_1 = require("../messaging/schemas/message-session.s
 const contact_schema_1 = require("../contact/schemas/contact.schema");
 const conversation_module_1 = require("../conversation/conversation.module");
 const project_module_1 = require("../project/project.module");
+const broadcast_schema_1 = require("../messaging/schemas/broadcast.schema");
 let WebhookModule = class WebhookModule {
 };
 exports.WebhookModule = WebhookModule;
@@ -29,6 +30,7 @@ exports.WebhookModule = WebhookModule = __decorate([
                 { name: message_schema_1.Message.name, schema: message_schema_1.MessageSchema },
                 { name: message_session_schema_1.MessageSession.name, schema: message_session_schema_1.MessageSessionSchema },
                 { name: contact_schema_1.Contact.name, schema: contact_schema_1.ContactSchema },
+                { name: broadcast_schema_1.Broadcast.name, schema: broadcast_schema_1.BroadcastSchema },
             ]),
             conversation_module_1.ConversationModule,
             project_module_1.ProjectModule,

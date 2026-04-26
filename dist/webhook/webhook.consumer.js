@@ -25,20 +25,23 @@ const conversation_service_1 = require("../conversation/conversation.service");
 const project_service_1 = require("../project/project.service");
 const consumer_interface_1 = require("../queue/consumers/consumer.interface");
 const queue_interface_1 = require("../queue/queue.interface");
+const broadcast_schema_1 = require("../messaging/schemas/broadcast.schema");
 let WebhookConsumer = WebhookConsumer_1 = class WebhookConsumer {
     deliveryStatusModel;
     messageModel;
     sessionModel;
     contactModel;
+    broadcastModel;
     consumer;
     conversationService;
     projectService;
     logger = new common_1.Logger(WebhookConsumer_1.name);
-    constructor(deliveryStatusModel, messageModel, sessionModel, contactModel, consumer, conversationService, projectService) {
+    constructor(deliveryStatusModel, messageModel, sessionModel, contactModel, broadcastModel, consumer, conversationService, projectService) {
         this.deliveryStatusModel = deliveryStatusModel;
         this.messageModel = messageModel;
         this.sessionModel = sessionModel;
         this.contactModel = contactModel;
+        this.broadcastModel = broadcastModel;
         this.consumer = consumer;
         this.conversationService = conversationService;
         this.projectService = projectService;
@@ -97,7 +100,9 @@ let WebhookConsumer = WebhookConsumer_1 = class WebhookConsumer {
             }
             const projectId = config.projectId;
             const mobile = this.normalizePhone(senderNumber);
-            const existingMessage = await this.messageModel.findOne({ metaMessageId });
+            const existingMessage = await this.messageModel.findOne({
+                metaMessageId,
+            });
             if (existingMessage) {
                 this.logger.debug(`Duplicate inbound message skipped: ${metaMessageId}`);
                 return;
@@ -175,6 +180,15 @@ let WebhookConsumer = WebhookConsumer_1 = class WebhookConsumer {
                 const counterField = `counters.${statusValue}`;
                 await this.sessionModel.updateOne({ _id: message.sessionId }, { $inc: { [counterField]: 1 } });
             }
+            if (message.broadcastId) {
+                await this.broadcastModel.updateOne({ _id: message.broadcastId }, {
+                    $inc: {
+                        'counters.delivered': statusValue === 'delivered' ? 1 : 0,
+                        'counters.read': statusValue === 'read' ? 1 : 0,
+                        'counters.failed': statusValue === 'failed' ? 1 : 0,
+                    },
+                });
+            }
             this.logger.debug(`Status update: ${recipientNumber} -> ${statusValue} (msgId: ${metaMessageId})`);
         }
         else {
@@ -208,8 +222,10 @@ exports.WebhookConsumer = WebhookConsumer = WebhookConsumer_1 = __decorate([
     __param(1, (0, mongoose_1.InjectModel)(message_schema_1.Message.name)),
     __param(2, (0, mongoose_1.InjectModel)(message_session_schema_1.MessageSession.name)),
     __param(3, (0, mongoose_1.InjectModel)(contact_schema_1.Contact.name)),
-    __param(4, (0, common_1.Inject)(consumer_interface_1.QUEUE_CONSUMER)),
+    __param(4, (0, mongoose_1.InjectModel)(broadcast_schema_1.Broadcast.name)),
+    __param(5, (0, common_1.Inject)(consumer_interface_1.QUEUE_CONSUMER)),
     __metadata("design:paramtypes", [mongoose_2.Model,
+        mongoose_2.Model,
         mongoose_2.Model,
         mongoose_2.Model,
         mongoose_2.Model, Object, conversation_service_1.ConversationService,

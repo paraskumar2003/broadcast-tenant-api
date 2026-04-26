@@ -1,10 +1,4 @@
-import {
-  Controller,
-  Post,
-  Body,
-  Res,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Post, Body, Res, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { ReportingService } from './reporting.service';

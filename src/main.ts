@@ -9,8 +9,6 @@ import { BullmqQueueProvider } from './queue/providers/bullmq-queue.provider';
 import { QUEUE_SERVICE } from './queue/queue.interface';
 import { Queue } from 'bullmq';
 
-
-
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const logger = new Logger('Bootstrap');
@@ -47,7 +45,9 @@ async function bootstrap() {
   // Swagger
   const swaggerConfig = new DocumentBuilder()
     .setTitle('WhatsApp Messaging Service')
-    .setDescription('Dedicated NestJS service for WhatsApp message delivery via Meta Cloud API')
+    .setDescription(
+      'Dedicated NestJS service for WhatsApp message delivery via Meta Cloud API',
+    )
     .setVersion('1.0')
     .addBearerAuth()
     .build();

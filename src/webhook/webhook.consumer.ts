@@ -1,7 +1,10 @@
 import { Injectable, Inject, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { DeliveryStatus, DeliveryStatusDocument } from './schemas/delivery-status.schema';
+import {
+  DeliveryStatus,
+  DeliveryStatusDocument,
+} from './schemas/delivery-status.schema';
 import { Message, MessageDocument } from '../messaging/schemas/message.schema';
 import {
   MessageSession,
@@ -13,6 +16,7 @@ import { ProjectService } from '../project/project.service';
 import type { IQueueConsumer } from '../queue/consumers/consumer.interface';
 import { QUEUE_CONSUMER } from '../queue/consumers/consumer.interface';
 import { QUEUE_NAMES } from '../queue/queue.interface';
+import { Broadcast } from 'src/messaging/schemas/broadcast.schema';
 
 @Injectable()
 export class WebhookConsumer implements OnModuleInit {
@@ -26,6 +30,8 @@ export class WebhookConsumer implements OnModuleInit {
     private sessionModel: Model<MessageSessionDocument>,
     @InjectModel(Contact.name)
     private contactModel: Model<ContactDocument>,
+    @InjectModel(Broadcast.name)
+    private broadcastModel: Model<Broadcast>,
     @Inject(QUEUE_CONSUMER) private readonly consumer: IQueueConsumer,
     private readonly conversationService: ConversationService,
     private readonly projectService: ProjectService,
@@ -72,7 +78,10 @@ export class WebhookConsumer implements OnModuleInit {
         }
       }
     } catch (error: any) {
-      this.logger.error(`Webhook processing error: ${error.message}`, error.stack);
+      this.logger.error(
+        `Webhook processing error: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -98,7 +107,8 @@ export class WebhookConsumer implements OnModuleInit {
     }
 
     // Extract media URL (if any)
-    const mediaUrl: string | null = msg[messageType]?.link || msg[messageType]?.url || null;
+    const mediaUrl: string | null =
+      msg[messageType]?.link || msg[messageType]?.url || null;
 
     try {
       // 1. Resolve project from WABA ID
@@ -113,15 +123,18 @@ export class WebhookConsumer implements OnModuleInit {
       const mobile = this.normalizePhone(senderNumber);
 
       // 3. Deduplication — check if message already exists
-      const existingMessage = await this.messageModel.findOne({ metaMessageId });
+      const existingMessage = await this.messageModel.findOne({
+        metaMessageId,
+      });
       if (existingMessage) {
-        this.logger.debug(`Duplicate inbound message skipped: ${metaMessageId}`);
+        this.logger.debug(
+          `Duplicate inbound message skipped: ${metaMessageId}`,
+        );
         return;
       }
 
       // 4. Find or create contact
-      const contactName =
-        webhookContacts?.[0]?.profile?.name || mobile;
+      const contactName = webhookContacts?.[0]?.profile?.name || mobile;
       let contact = await this.contactModel.findOne({ projectId, mobile });
       if (!contact) {
         contact = await this.contactModel.create({
@@ -130,17 +143,20 @@ export class WebhookConsumer implements OnModuleInit {
           name: contactName,
           isActive: true,
         });
-        this.logger.debug(`Auto-created contact: ${mobile} in project ${projectId}`);
+        this.logger.debug(
+          `Auto-created contact: ${mobile} in project ${projectId}`,
+        );
       }
 
       const contactId = contact._id as Types.ObjectId;
 
       // 5. Find or create conversation
-      const conversation = await this.conversationService.findOrCreateConversation(
-        projectId,
-        contactId,
-        mobile,
-      );
+      const conversation =
+        await this.conversationService.findOrCreateConversation(
+          projectId,
+          contactId,
+          mobile,
+        );
 
       // 6. Insert message
       const message = await this.messageModel.create({
@@ -242,6 +258,20 @@ export class WebhookConsumer implements OnModuleInit {
         );
       }
 
+      // 4. Update broadcast counters
+      if (message.broadcastId) {
+        await this.broadcastModel.updateOne(
+          { _id: message.broadcastId },
+          {
+            $inc: {
+              'counters.delivered': statusValue === 'delivered' ? 1 : 0,
+              'counters.read': statusValue === 'read' ? 1 : 0,
+              'counters.failed': statusValue === 'failed' ? 1 : 0,
+            },
+          },
+        );
+      }
+
       this.logger.debug(
         `Status update: ${recipientNumber} -> ${statusValue} (msgId: ${metaMessageId})`,
       );
@@ -274,4 +304,3 @@ export class WebhookConsumer implements OnModuleInit {
     return mapping[waType] || 'unknown';
   }
 }
-

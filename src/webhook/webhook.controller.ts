@@ -22,7 +22,7 @@ export class WebhookController {
   constructor(
     private readonly webhookService: WebhookService,
     private readonly configService: ConfigService,
-  ) { }
+  ) {}
 
   /**
    * Meta webhook verification (GET).
@@ -62,8 +62,8 @@ export class WebhookController {
   }
 
   /**
- * Verify webhook with Meta (GET).
- */
+   * Verify webhook with Meta (GET).
+   */
   @Get()
   @ApiOperation({ summary: 'Verify Meta webhook' })
   verifyWebhook(

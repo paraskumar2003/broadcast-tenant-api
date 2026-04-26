@@ -15,6 +15,10 @@ import {
 import { Contact, ContactSchema } from '../contact/schemas/contact.schema';
 import { ConversationModule } from '../conversation/conversation.module';
 import { ProjectModule } from '../project/project.module';
+import {
+  Broadcast,
+  BroadcastSchema,
+} from '../messaging/schemas/broadcast.schema';
 
 @Module({
   imports: [
@@ -23,6 +27,7 @@ import { ProjectModule } from '../project/project.module';
       { name: Message.name, schema: MessageSchema },
       { name: MessageSession.name, schema: MessageSessionSchema },
       { name: Contact.name, schema: ContactSchema },
+      { name: Broadcast.name, schema: BroadcastSchema },
     ]),
     ConversationModule,
     ProjectModule,
@@ -31,5 +36,4 @@ import { ProjectModule } from '../project/project.module';
   providers: [WebhookService, WebhookConsumer],
   exports: [WebhookService],
 })
-export class WebhookModule { }
-
+export class WebhookModule {}
