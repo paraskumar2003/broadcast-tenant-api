@@ -46,6 +46,9 @@ export class Broadcast {
     failed: number;
   };
 
+  @Prop({ type: [Types.ObjectId], ref: 'Tag', default: [] })
+  tagIds: Types.ObjectId[];
+
   @Prop({
     type: String,
     enum: ['pending', 'processing', 'completed', 'failed'],
@@ -64,3 +67,4 @@ export class Broadcast {
 export const BroadcastSchema = SchemaFactory.createForClass(Broadcast);
 BroadcastSchema.index({ projectConfigId: 1, createdAt: -1 });
 BroadcastSchema.index({ projectConfigId: 1, status: 1 });
+BroadcastSchema.index({ projectConfigId: 1, templateName: 1 });

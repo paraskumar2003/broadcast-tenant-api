@@ -175,6 +175,7 @@ let MessagingService = MessagingService_1 = class MessagingService {
                 templatePayload: dto.template,
                 language: dto.language || 'en_US',
                 totalRecipients: finalRecipients.length,
+                tagIds: dto.tagIds?.map((id) => new mongoose_2.Types.ObjectId(id)) || [],
                 status: 'processing',
                 scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
             });

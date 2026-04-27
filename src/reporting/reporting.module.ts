@@ -4,20 +4,17 @@ import { ReportingService } from './reporting.service';
 import { ReportingController } from './reporting.controller';
 import { Message, MessageSchema } from '../messaging/schemas/message.schema';
 import {
-  MessageSession,
-  MessageSessionSchema,
-} from '../messaging/schemas/message-session.schema';
-import {
-  DeliveryStatus,
-  DeliveryStatusSchema,
-} from '../webhook/schemas/delivery-status.schema';
+  Broadcast,
+  BroadcastSchema,
+} from '../messaging/schemas/broadcast.schema';
+import { Tag, TagSchema } from '../tagging/schemas/tag.schema';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: Message.name, schema: MessageSchema },
-      { name: MessageSession.name, schema: MessageSessionSchema },
-      { name: DeliveryStatus.name, schema: DeliveryStatusSchema },
+      { name: Broadcast.name, schema: BroadcastSchema },
+      { name: Tag.name, schema: TagSchema },
     ]),
   ],
   providers: [ReportingService],

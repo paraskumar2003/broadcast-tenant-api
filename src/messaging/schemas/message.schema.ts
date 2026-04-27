@@ -112,3 +112,9 @@ MessageSchema.index({ sessionId: 1, currentStatus: 1 });
 MessageSchema.index({ metaMessageId: 1 }, { unique: true, sparse: true });
 MessageSchema.index({ conversationId: 1, createdAt: 1 });
 MessageSchema.index({ createdAt: -1 });
+// Reports compound indexes (projectConfigId-scoped)
+MessageSchema.index({ projectConfigId: 1, createdAt: -1 });
+MessageSchema.index({ projectConfigId: 1, currentStatus: 1, createdAt: -1 });
+MessageSchema.index({ projectConfigId: 1, broadcastId: 1, createdAt: -1 });
+MessageSchema.index({ projectConfigId: 1, recipientNumber: 1, createdAt: -1 });
+MessageSchema.index({ projectConfigId: 1, templateName: 1, createdAt: -1 });

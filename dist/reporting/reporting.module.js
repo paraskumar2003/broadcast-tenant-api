@@ -12,8 +12,8 @@ const mongoose_1 = require("@nestjs/mongoose");
 const reporting_service_1 = require("./reporting.service");
 const reporting_controller_1 = require("./reporting.controller");
 const message_schema_1 = require("../messaging/schemas/message.schema");
-const message_session_schema_1 = require("../messaging/schemas/message-session.schema");
-const delivery_status_schema_1 = require("../webhook/schemas/delivery-status.schema");
+const broadcast_schema_1 = require("../messaging/schemas/broadcast.schema");
+const tag_schema_1 = require("../tagging/schemas/tag.schema");
 let ReportingModule = class ReportingModule {
 };
 exports.ReportingModule = ReportingModule;
@@ -22,8 +22,8 @@ exports.ReportingModule = ReportingModule = __decorate([
         imports: [
             mongoose_1.MongooseModule.forFeature([
                 { name: message_schema_1.Message.name, schema: message_schema_1.MessageSchema },
-                { name: message_session_schema_1.MessageSession.name, schema: message_session_schema_1.MessageSessionSchema },
-                { name: delivery_status_schema_1.DeliveryStatus.name, schema: delivery_status_schema_1.DeliveryStatusSchema },
+                { name: broadcast_schema_1.Broadcast.name, schema: broadcast_schema_1.BroadcastSchema },
+                { name: tag_schema_1.Tag.name, schema: tag_schema_1.TagSchema },
             ]),
         ],
         providers: [reporting_service_1.ReportingService],

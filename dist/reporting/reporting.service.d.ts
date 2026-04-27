@@ -1,52 +1,67 @@
 import { Model } from 'mongoose';
 import { MessageDocument } from '../messaging/schemas/message.schema';
-import { MessageSession, MessageSessionDocument } from '../messaging/schemas/message-session.schema';
-import { DeliveryStatusDocument } from '../webhook/schemas/delivery-status.schema';
+import { BroadcastDocument } from '../messaging/schemas/broadcast.schema';
+import { TagDocument } from '../tagging/schemas/tag.schema';
+export interface BroadcastReportFilters {
+    projectConfigId: string;
+    startDate?: string;
+    endDate?: string;
+    status?: string;
+    templateName?: string;
+    tagIds?: string[];
+    search?: string;
+    page?: number;
+    limit?: number;
+}
+export interface MessageReportFilters {
+    projectConfigId: string;
+    startDate?: string;
+    endDate?: string;
+    status?: string;
+    broadcastId?: string;
+    templateName?: string;
+    recipientNumber?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+}
 export declare class ReportingService {
     private readonly messageModel;
-    private readonly sessionModel;
-    private readonly deliveryStatusModel;
+    private readonly broadcastModel;
+    private readonly tagModel;
     private readonly logger;
-    constructor(messageModel: Model<MessageDocument>, sessionModel: Model<MessageSessionDocument>, deliveryStatusModel: Model<DeliveryStatusDocument>);
-    getMessages(filters: {
-        date?: string;
-        number?: string;
-        sessionId?: string;
-        page?: number;
-        limit?: number;
-    }): Promise<{
+    constructor(messageModel: Model<MessageDocument>, broadcastModel: Model<BroadcastDocument>, tagModel: Model<TagDocument>);
+    private buildDateRange;
+    private buildBroadcastMatch;
+    getBroadcastSummary(filters: BroadcastReportFilters): Promise<{
+        totalBroadcasts: any;
+        totalRecipients: any;
+        totalSent: any;
+        totalDelivered: any;
+        totalFailed: any;
+        totalRead: any;
+        deliveryRate: number;
+        readRate: number;
+    }>;
+    getBroadcastList(filters: BroadcastReportFilters): Promise<{
         data: any[];
-        total: number;
-        page: number;
-        limit: number;
+        pagination: {
+            page: number;
+            limit: number;
+            total: number;
+            hasNext: boolean;
+        };
     }>;
-    getSessionSummary(filters: {
-        date?: string;
-        projectConfigId?: string;
-        page?: number;
-        limit?: number;
-    }): Promise<{
-        data: (import("mongoose").Document<unknown, {}, MessageSessionDocument, {}, import("mongoose").DefaultSchemaOptions> & MessageSession & import("mongoose").Document<import("mongoose").Types.ObjectId, any, any, Record<string, any>, {}> & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }> & {
-            __v: number;
-        } & {
-            id: string;
-        })[];
-        total: number;
-        page: number;
-        limit: number;
+    getBroadcastExportCursor(filters: BroadcastReportFilters): import("mongoose").Cursor<any, never, any>;
+    getDistinctTemplates(projectConfigId: string): Promise<string[]>;
+    getMessageList(filters: MessageReportFilters): Promise<{
+        data: any[];
+        pagination: {
+            page: number;
+            limit: number;
+            total: number;
+            hasNext: boolean;
+        };
     }>;
-    getAnalytics(filters: {
-        startDate: string;
-        endDate: string;
-        wabaId?: string;
-        templateName?: string;
-    }): Promise<any[]>;
-    getExcelCursor(filters: {
-        date: string;
-        wabaId?: string;
-        templateName?: string;
-        status?: string;
-    }): import("mongoose").Cursor<any, never, any>;
+    getMessageExportCursor(filters: MessageReportFilters): import("mongoose").Cursor<any, never, any>;
 }

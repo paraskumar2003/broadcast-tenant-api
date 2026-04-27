@@ -14,6 +14,7 @@ export declare class Broadcast {
         read: number;
         failed: number;
     };
+    tagIds: Types.ObjectId[];
     status: string;
     scheduledAt: Date | null;
     completedAt: Date | null;
@@ -98,6 +99,15 @@ export declare const BroadcastSchema: import("mongoose").Schema<Broadcast, impor
         read: number;
         failed: number;
     }, Broadcast, Document<unknown, {}, Broadcast, {
+        id: string;
+    }, import("mongoose").DefaultSchemaOptions> & Omit<Broadcast & {
+        _id: Types.ObjectId;
+    } & {
+        __v: number;
+    }, "id"> & {
+        id: string;
+    }> | undefined;
+    tagIds?: import("mongoose").SchemaDefinitionProperty<Types.ObjectId[], Broadcast, Document<unknown, {}, Broadcast, {
         id: string;
     }, import("mongoose").DefaultSchemaOptions> & Omit<Broadcast & {
         _id: Types.ObjectId;

@@ -1,217 +1,514 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types, PipelineStage } from 'mongoose';
 import { Message, MessageDocument } from '../messaging/schemas/message.schema';
 import {
-  MessageSession,
-  MessageSessionDocument,
-} from '../messaging/schemas/message-session.schema';
-import {
-  DeliveryStatus,
-  DeliveryStatusDocument,
-} from '../webhook/schemas/delivery-status.schema';
+  Broadcast,
+  BroadcastDocument,
+} from '../messaging/schemas/broadcast.schema';
+import { Tag, TagDocument } from '../tagging/schemas/tag.schema';
+
+// ─── Filter interfaces ──────────────────────────────────────────────────
+
+export interface BroadcastReportFilters {
+  projectConfigId: string;
+  startDate?: string;
+  endDate?: string;
+  status?: string;
+  templateName?: string;
+  tagIds?: string[];
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface MessageReportFilters {
+  projectConfigId: string;
+  startDate?: string;
+  endDate?: string;
+  status?: string;
+  broadcastId?: string;
+  templateName?: string;
+  recipientNumber?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}
 
 @Injectable()
 export class ReportingService {
   private readonly logger = new Logger(ReportingService.name);
 
   constructor(
-    @InjectModel(Message.name) private readonly messageModel: Model<MessageDocument>,
-    @InjectModel(MessageSession.name)
-    private readonly sessionModel: Model<MessageSessionDocument>,
-    @InjectModel(DeliveryStatus.name)
-    private readonly deliveryStatusModel: Model<DeliveryStatusDocument>,
+    @InjectModel(Message.name)
+    private readonly messageModel: Model<MessageDocument>,
+    @InjectModel(Broadcast.name)
+    private readonly broadcastModel: Model<BroadcastDocument>,
+    @InjectModel(Tag.name)
+    private readonly tagModel: Model<TagDocument>,
   ) {}
 
+  // ─── Helpers ───────────────────────────────────────────────────────────
+
+  private buildDateRange(startDate?: string, endDate?: string) {
+    const now = new Date();
+    const end = endDate ? new Date(endDate) : now;
+    end.setHours(23, 59, 59, 999);
+
+    const start = startDate
+      ? new Date(startDate)
+      : new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); // default: 7 days
+    start.setHours(0, 0, 0, 0);
+
+    // Enforce max 90-day range
+    const maxMs = 90 * 24 * 60 * 60 * 1000;
+    if (end.getTime() - start.getTime() > maxMs) {
+      throw new BadRequestException('Date range cannot exceed 90 days.');
+    }
+
+    return { $gte: start, $lte: end };
+  }
+
+  private buildBroadcastMatch(filters: BroadcastReportFilters): any {
+    const match: any = {
+      projectConfigId: new Types.ObjectId(filters.projectConfigId),
+      createdAt: this.buildDateRange(filters.startDate, filters.endDate),
+    };
+
+    if (filters.status && filters.status !== 'all') {
+      match.status = filters.status;
+    }
+
+    if (filters.templateName && filters.templateName !== 'all') {
+      match.templateName = filters.templateName;
+    }
+
+    if (filters.tagIds && filters.tagIds.length > 0) {
+      match.tagIds = {
+        $in: filters.tagIds.map((id) => new Types.ObjectId(id)),
+      };
+    }
+
+    if (filters.search) {
+      match.name = { $regex: filters.search, $options: 'i' };
+    }
+
+    return match;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // BROADCAST REPORTS
+  // ═══════════════════════════════════════════════════════════════════════
+
   /**
-   * Paginated message list with delivery status join.
+   * Aggregate summary stats across all matching broadcasts.
+   * Uses pre-computed Broadcast.counters — O(broadcasts), NOT O(messages).
    */
-  async getMessages(filters: {
-    date?: string;
-    number?: string;
-    sessionId?: string;
-    page?: number;
-    limit?: number;
-  }) {
-    const { date, number, sessionId, page = 1, limit = 20 } = filters;
-    const skip = (page - 1) * limit;
+  async getBroadcastSummary(filters: BroadcastReportFilters) {
+    const match = this.buildBroadcastMatch(filters);
 
-    const matchStage: any = {};
-
-    if (date) {
-      const start = new Date(date);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(date);
-      end.setHours(23, 59, 59, 999);
-      matchStage.createdAt = { $gte: start, $lte: end };
-    }
-
-    if (number) {
-      matchStage.recipientNumber = { $regex: number };
-    }
-
-    if (sessionId) {
-      matchStage.sessionId = sessionId;
-    }
-
-    const pipeline: any[] = [
-      { $match: matchStage },
+    const pipeline: PipelineStage[] = [
+      { $match: match },
       {
-        $lookup: {
-          from: 'delivery_statuses',
-          localField: 'metaMessageId',
-          foreignField: 'metaMessageId',
-          as: 'deliveryEvents',
+        $group: {
+          _id: null,
+          totalBroadcasts: { $sum: 1 },
+          totalRecipients: { $sum: '$totalRecipients' },
+          totalSent: { $sum: '$counters.sent' },
+          totalDelivered: { $sum: '$counters.delivered' },
+          totalFailed: { $sum: '$counters.failed' },
+          totalRead: { $sum: '$counters.read' },
         },
       },
+    ];
+
+    const [result] = await this.broadcastModel.aggregate(pipeline);
+
+    if (!result) {
+      return {
+        totalBroadcasts: 0,
+        totalRecipients: 0,
+        totalSent: 0,
+        totalDelivered: 0,
+        totalFailed: 0,
+        totalRead: 0,
+        deliveryRate: 0,
+        readRate: 0,
+      };
+    }
+
+    return {
+      totalBroadcasts: result.totalBroadcasts,
+      totalRecipients: result.totalRecipients,
+      totalSent: result.totalSent,
+      totalDelivered: result.totalDelivered,
+      totalFailed: result.totalFailed,
+      totalRead: result.totalRead,
+      deliveryRate:
+        result.totalSent > 0
+          ? Math.round((result.totalDelivered / result.totalSent) * 1000) / 10
+          : 0,
+      readRate:
+        result.totalDelivered > 0
+          ? Math.round((result.totalRead / result.totalDelivered) * 1000) / 10
+          : 0,
+    };
+  }
+
+  /**
+   * Paginated broadcast list with tag names resolved.
+   */
+  async getBroadcastList(filters: BroadcastReportFilters) {
+    const match = this.buildBroadcastMatch(filters);
+    const page = filters.page || 1;
+    const limit = Math.min(filters.limit || 20, 50);
+    const skip = (page - 1) * limit;
+
+    const pipeline: PipelineStage[] = [
+      { $match: match },
       { $sort: { createdAt: -1 } },
       { $skip: skip },
       { $limit: limit },
-    ];
-
-    const [data, total] = await Promise.all([
-      this.messageModel.aggregate(pipeline),
-      this.messageModel.countDocuments(matchStage),
-    ]);
-
-    return { data, total, page, limit };
-  }
-
-  /**
-   * Session-level summary with counters.
-   */
-  async getSessionSummary(filters: {
-    date?: string;
-    projectConfigId?: string;
-    page?: number;
-    limit?: number;
-  }) {
-    const { date, projectConfigId, page = 1, limit = 20 } = filters;
-    const skip = (page - 1) * limit;
-
-    const matchStage: any = {};
-
-    if (date) {
-      const start = new Date(date);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(date);
-      end.setHours(23, 59, 59, 999);
-      matchStage.createdAt = { $gte: start, $lte: end };
-    }
-
-    if (projectConfigId) {
-      matchStage.projectConfigId = projectConfigId;
-    }
-
-    const data = await this.sessionModel
-      .find(matchStage)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
-
-    const total = await this.sessionModel.countDocuments(matchStage);
-
-    return { data, total, page, limit };
-  }
-
-  /**
-   * Aggregated analytics by template and date range.
-   */
-  async getAnalytics(filters: {
-    startDate: string;
-    endDate: string;
-    wabaId?: string;
-    templateName?: string;
-  }) {
-    const start = new Date(filters.startDate);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(filters.endDate);
-    end.setHours(23, 59, 59, 999);
-
-    const matchStage: any = {
-      createdAt: { $gte: start, $lte: end },
-    };
-
-    if (filters.templateName) {
-      matchStage.templateName = filters.templateName;
-    }
-
-    const pipeline = [
-      { $match: matchStage },
+      // Resolve tag names
       {
-        $group: {
-          _id: {
-            date: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-            templateName: '$templateName',
-            currentStatus: '$currentStatus',
-          },
-          count: { $sum: 1 },
+        $lookup: {
+          from: 'tags',
+          localField: 'tagIds',
+          foreignField: '_id',
+          pipeline: [{ $project: { name: 1, color: 1 } }],
+          as: '_tags',
         },
       },
       {
         $project: {
-          _id: 0,
-          date: '$_id.date',
-          templateName: '$_id.templateName',
-          status: '$_id.currentStatus',
-          count: 1,
+          _id: 1,
+          name: 1,
+          templateName: 1,
+          status: 1,
+          totalRecipients: 1,
+          counters: 1,
+          scheduledAt: 1,
+          createdAt: 1,
+          tags: {
+            $map: {
+              input: '$_tags',
+              as: 't',
+              in: { id: '$$t._id', name: '$$t.name', color: '$$t.color' },
+            },
+          },
+          deliveryRate: {
+            $cond: [
+              { $gt: ['$counters.sent', 0] },
+              {
+                $round: [
+                  {
+                    $multiply: [
+                      { $divide: ['$counters.delivered', '$counters.sent'] },
+                      100,
+                    ],
+                  },
+                  1,
+                ],
+              },
+              0,
+            ],
+          },
+          readRate: {
+            $cond: [
+              { $gt: ['$counters.delivered', 0] },
+              {
+                $round: [
+                  {
+                    $multiply: [
+                      { $divide: ['$counters.read', '$counters.delivered'] },
+                      100,
+                    ],
+                  },
+                  1,
+                ],
+              },
+              0,
+            ],
+          },
         },
       },
-      { $sort: { date: 1, templateName: 1 } as any },
     ];
 
-    return this.messageModel.aggregate(pipeline).allowDiskUse(true);
+    const [data, total] = await Promise.all([
+      this.broadcastModel.aggregate(pipeline),
+      this.broadcastModel.countDocuments(match),
+    ]);
+
+    return {
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        hasNext: skip + limit < total,
+      },
+    };
   }
 
   /**
-   * Get message data as a cursor for Excel streaming.
+   * Streaming cursor for broadcast export (CSV/Excel).
    */
-  getExcelCursor(filters: {
-    date: string;
-    wabaId?: string;
-    templateName?: string;
-    status?: string;
-  }) {
-    const start = new Date(filters.date);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(filters.date);
-    end.setHours(23, 59, 59, 999);
+  getBroadcastExportCursor(filters: BroadcastReportFilters) {
+    const match = this.buildBroadcastMatch(filters);
 
-    const matchStage: any = {
-      createdAt: { $gte: start, $lte: end },
-    };
-
-    if (filters.templateName) {
-      matchStage.templateName = filters.templateName;
-    }
-
-    const pipeline: any[] = [
-      { $match: matchStage },
+    const pipeline: PipelineStage[] = [
+      { $match: match },
+      { $sort: { createdAt: -1 } },
       {
         $lookup: {
-          from: 'delivery_statuses',
-          localField: 'metaMessageId',
-          foreignField: 'metaMessageId',
-          as: 'deliveryEvents',
+          from: 'tags',
+          localField: 'tagIds',
+          foreignField: '_id',
+          pipeline: [{ $project: { name: 1 } }],
+          as: '_tags',
         },
       },
-      { $unwind: { path: '$deliveryEvents', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          name: 1,
+          templateName: 1,
+          status: 1,
+          totalRecipients: 1,
+          sent: '$counters.sent',
+          delivered: '$counters.delivered',
+          failed: '$counters.failed',
+          read: '$counters.read',
+          tags: {
+            $reduce: {
+              input: '$_tags',
+              initialValue: '',
+              in: {
+                $cond: [
+                  { $eq: ['$$value', ''] },
+                  '$$this.name',
+                  { $concat: ['$$value', ', ', '$$this.name'] },
+                ],
+              },
+            },
+          },
+          scheduledAt: 1,
+          createdAt: 1,
+        },
+      },
     ];
 
-    if (filters.status && filters.status !== '0') {
-      pipeline.push({ $match: { 'deliveryEvents.status': filters.status } });
+    return this.broadcastModel.aggregate(pipeline).cursor({ batchSize: 500 });
+  }
+
+  /**
+   * Get distinct template names for filter dropdown.
+   */
+  async getDistinctTemplates(projectConfigId: string) {
+    return this.broadcastModel.distinct('templateName', {
+      projectConfigId: new Types.ObjectId(projectConfigId),
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // MESSAGE-LEVEL REPORTS
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /**
+   * Paginated message list with extracted status timestamps.
+   */
+  async getMessageList(filters: MessageReportFilters) {
+    const page = filters.page || 1;
+    const limit = Math.min(filters.limit || 50, 100);
+    const skip = (page - 1) * limit;
+
+    const match: any = {
+      projectConfigId: new Types.ObjectId(filters.projectConfigId),
+      createdAt: this.buildDateRange(filters.startDate, filters.endDate),
+      direction: 'outbound', // only outbound messages in reports
+    };
+
+    if (filters.status && filters.status !== 'all') {
+      match.currentStatus = filters.status;
     }
 
-    pipeline.push({
-      $project: {
-        _id: 0,
-        templateName: 1,
-        recipientNumber: 1,
-        metaMessageId: 1,
-        status: { $ifNull: ['$deliveryEvents.status', '$currentStatus'] },
-        timestamp: { $ifNull: ['$deliveryEvents.timestamp', '$createdAt'] },
+    if (filters.broadcastId && filters.broadcastId !== 'all') {
+      match.broadcastId = new Types.ObjectId(filters.broadcastId);
+    }
+
+    if (filters.templateName && filters.templateName !== 'all') {
+      match.templateName = filters.templateName;
+    }
+
+    // Search by recipientNumber or metaMessageId
+    if (filters.search && filters.search.length >= 3) {
+      match.$or = [
+        { recipientNumber: { $regex: filters.search, $options: 'i' } },
+        { metaMessageId: filters.search },
+      ];
+    } else if (filters.recipientNumber) {
+      match.recipientNumber = {
+        $regex: filters.recipientNumber,
+        $options: 'i',
+      };
+    }
+
+    const pipeline: PipelineStage[] = [
+      { $match: match },
+      { $sort: { createdAt: -1 } },
+      { $skip: skip },
+      { $limit: limit },
+      // Extract timestamps from statusHistory
+      {
+        $addFields: {
+          sentAt: {
+            $let: {
+              vars: {
+                entry: {
+                  $arrayElemAt: [
+                    {
+                      $filter: {
+                        input: '$statusHistory',
+                        cond: { $eq: ['$$this.status', 'sent'] },
+                      },
+                    },
+                    0,
+                  ],
+                },
+              },
+              in: '$$entry.timestamp',
+            },
+          },
+          deliveredAt: {
+            $let: {
+              vars: {
+                entry: {
+                  $arrayElemAt: [
+                    {
+                      $filter: {
+                        input: '$statusHistory',
+                        cond: { $eq: ['$$this.status', 'delivered'] },
+                      },
+                    },
+                    0,
+                  ],
+                },
+              },
+              in: '$$entry.timestamp',
+            },
+          },
+          readAt: {
+            $let: {
+              vars: {
+                entry: {
+                  $arrayElemAt: [
+                    {
+                      $filter: {
+                        input: '$statusHistory',
+                        cond: { $eq: ['$$this.status', 'read'] },
+                      },
+                    },
+                    0,
+                  ],
+                },
+              },
+              in: '$$entry.timestamp',
+            },
+          },
+        },
       },
-    });
+      // Lookup broadcast name
+      {
+        $lookup: {
+          from: 'broadcasts',
+          localField: 'broadcastId',
+          foreignField: '_id',
+          pipeline: [{ $project: { name: 1 } }],
+          as: '_broadcast',
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          recipientNumber: 1,
+          broadcastId: 1,
+          broadcastName: { $arrayElemAt: ['$_broadcast.name', 0] },
+          templateName: 1,
+          currentStatus: 1,
+          sentAt: 1,
+          deliveredAt: 1,
+          readAt: 1,
+          errorDetails: 1,
+          createdAt: 1,
+        },
+      },
+    ];
+
+    const [data, total] = await Promise.all([
+      this.messageModel.aggregate(pipeline),
+      this.messageModel.countDocuments(match),
+    ]);
+
+    return {
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        hasNext: skip + limit < total,
+      },
+    };
+  }
+
+  /**
+   * Streaming cursor for message-level export.
+   */
+  getMessageExportCursor(filters: MessageReportFilters) {
+    const match: any = {
+      projectConfigId: new Types.ObjectId(filters.projectConfigId),
+      createdAt: this.buildDateRange(filters.startDate, filters.endDate),
+      direction: 'outbound',
+    };
+
+    if (filters.status && filters.status !== 'all') {
+      match.currentStatus = filters.status;
+    }
+    if (filters.broadcastId && filters.broadcastId !== 'all') {
+      match.broadcastId = new Types.ObjectId(filters.broadcastId);
+    }
+    if (filters.templateName && filters.templateName !== 'all') {
+      match.templateName = filters.templateName;
+    }
+    if (filters.recipientNumber) {
+      match.recipientNumber = {
+        $regex: filters.recipientNumber,
+        $options: 'i',
+      };
+    }
+
+    const pipeline: PipelineStage[] = [
+      { $match: match },
+      { $sort: { createdAt: -1 } },
+      { $limit: 100000 }, // safety cap
+      {
+        $lookup: {
+          from: 'broadcasts',
+          localField: 'broadcastId',
+          foreignField: '_id',
+          pipeline: [{ $project: { name: 1 } }],
+          as: '_broadcast',
+        },
+      },
+      {
+        $project: {
+          recipientNumber: 1,
+          broadcastName: { $arrayElemAt: ['$_broadcast.name', 0] },
+          templateName: 1,
+          currentStatus: 1,
+          errorDetails: 1,
+          createdAt: 1,
+        },
+      },
+    ];
 
     return this.messageModel.aggregate(pipeline).cursor({ batchSize: 1000 });
   }

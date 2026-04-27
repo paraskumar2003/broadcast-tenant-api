@@ -48,44 +48,167 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ReportingController = void 0;
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
+const ExcelJS = __importStar(require("exceljs"));
 const reporting_service_1 = require("./reporting.service");
 const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
 const api_response_dto_1 = require("../common/dto/api-response.dto");
-const ExcelJS = __importStar(require("exceljs"));
 let ReportingController = class ReportingController {
     reportingService;
     constructor(reportingService) {
         this.reportingService = reportingService;
     }
-    async getMessages(body) {
-        const data = await this.reportingService.getMessages(body);
-        return api_response_dto_1.ApiResponseDto.success('Messages fetched', data);
+    async getBroadcastSummary(projectConfigId, startDate, endDate, status, templateName, tagIdsStr) {
+        if (!projectConfigId) {
+            throw new common_1.BadRequestException('projectConfigId is required');
+        }
+        const tagIds = tagIdsStr
+            ? tagIdsStr.split(',').filter(Boolean)
+            : undefined;
+        const data = await this.reportingService.getBroadcastSummary({
+            projectConfigId,
+            startDate,
+            endDate,
+            status,
+            templateName,
+            tagIds,
+        });
+        return api_response_dto_1.ApiResponseDto.success('Broadcast summary fetched', data);
     }
-    async getSessionSummary(body) {
-        const data = await this.reportingService.getSessionSummary(body);
-        return api_response_dto_1.ApiResponseDto.success('Session summary fetched', data);
+    async getBroadcastList(projectConfigId, startDate, endDate, status, templateName, tagIdsStr, search, page = '1', limit = '20') {
+        if (!projectConfigId) {
+            throw new common_1.BadRequestException('projectConfigId is required');
+        }
+        const tagIds = tagIdsStr
+            ? tagIdsStr.split(',').filter(Boolean)
+            : undefined;
+        const data = await this.reportingService.getBroadcastList({
+            projectConfigId,
+            startDate,
+            endDate,
+            status,
+            templateName,
+            tagIds,
+            search,
+            page: parseInt(page, 10) || 1,
+            limit: Math.min(parseInt(limit, 10) || 20, 50),
+        });
+        return api_response_dto_1.ApiResponseDto.success('Broadcast list fetched', data);
     }
-    async getAnalytics(body) {
-        const data = await this.reportingService.getAnalytics(body);
-        return api_response_dto_1.ApiResponseDto.success('Analytics fetched', data);
-    }
-    async exportExcel(body, res) {
+    async exportBroadcasts(projectConfigId, startDate, endDate, status, templateName, tagIdsStr, res) {
+        if (!projectConfigId) {
+            throw new common_1.BadRequestException('projectConfigId is required');
+        }
+        const tagIds = tagIdsStr
+            ? tagIdsStr.split(',').filter(Boolean)
+            : undefined;
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.setHeader('Content-Disposition', 'attachment; filename=messages.xlsx');
+        res.setHeader('Content-Disposition', 'attachment; filename=broadcast_report.xlsx');
         const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({ stream: res });
-        const worksheet = workbook.addWorksheet('Messages');
+        const worksheet = workbook.addWorksheet('Broadcasts');
         worksheet
-            .addRow(['Template', 'Number', 'Message ID', 'Status', 'Timestamp'])
+            .addRow([
+            'Broadcast Name',
+            'Template',
+            'Status',
+            'Recipients',
+            'Sent',
+            'Delivered',
+            'Failed',
+            'Read',
+            'Tags',
+            'Scheduled At',
+            'Created At',
+        ])
             .commit();
-        const cursor = this.reportingService.getExcelCursor(body);
+        const cursor = this.reportingService.getBroadcastExportCursor({
+            projectConfigId,
+            startDate,
+            endDate,
+            status,
+            templateName,
+            tagIds,
+        });
         for await (const doc of cursor) {
             worksheet
                 .addRow([
+                doc.name,
                 doc.templateName,
-                doc.recipientNumber,
-                doc.metaMessageId,
                 doc.status,
-                doc.timestamp,
+                doc.totalRecipients,
+                doc.sent,
+                doc.delivered,
+                doc.failed,
+                doc.read,
+                doc.tags,
+                doc.scheduledAt,
+                doc.createdAt,
+            ])
+                .commit();
+        }
+        await workbook.commit();
+        res.end();
+    }
+    async getDistinctTemplates(projectConfigId) {
+        if (!projectConfigId) {
+            throw new common_1.BadRequestException('projectConfigId is required');
+        }
+        const data = await this.reportingService.getDistinctTemplates(projectConfigId);
+        return api_response_dto_1.ApiResponseDto.success('Templates fetched', data);
+    }
+    async getMessageList(projectConfigId, startDate, endDate, status, broadcastId, templateName, recipientNumber, search, page = '1', limit = '50') {
+        if (!projectConfigId) {
+            throw new common_1.BadRequestException('projectConfigId is required');
+        }
+        const data = await this.reportingService.getMessageList({
+            projectConfigId,
+            startDate,
+            endDate,
+            status,
+            broadcastId,
+            templateName,
+            recipientNumber,
+            search,
+            page: parseInt(page, 10) || 1,
+            limit: Math.min(parseInt(limit, 10) || 50, 100),
+        });
+        return api_response_dto_1.ApiResponseDto.success('Messages fetched', data);
+    }
+    async exportMessages(projectConfigId, startDate, endDate, status, broadcastId, templateName, recipientNumber, res) {
+        if (!projectConfigId) {
+            throw new common_1.BadRequestException('projectConfigId is required');
+        }
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename=message_report.xlsx');
+        const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({ stream: res });
+        const worksheet = workbook.addWorksheet('Messages');
+        worksheet
+            .addRow([
+            'Recipient Number',
+            'Broadcast',
+            'Template',
+            'Status',
+            'Error',
+            'Created At',
+        ])
+            .commit();
+        const cursor = this.reportingService.getMessageExportCursor({
+            projectConfigId,
+            startDate,
+            endDate,
+            status,
+            broadcastId,
+            templateName,
+            recipientNumber,
+        });
+        for await (const doc of cursor) {
+            worksheet
+                .addRow([
+                doc.recipientNumber,
+                doc.broadcastName || '—',
+                doc.templateName || '—',
+                doc.currentStatus,
+                doc.errorDetails?.title || doc.errorDetails?.message || '',
+                doc.createdAt,
             ])
                 .commit();
         }
@@ -95,38 +218,127 @@ let ReportingController = class ReportingController {
 };
 exports.ReportingController = ReportingController;
 __decorate([
-    (0, common_1.Post)('messages'),
-    (0, swagger_1.ApiOperation)({ summary: 'Paginated message list with delivery events' }),
-    __param(0, (0, common_1.Body)()),
+    (0, common_1.Get)('broadcasts/summary'),
+    (0, swagger_1.ApiOperation)({ summary: 'Aggregate broadcast summary metrics' }),
+    (0, swagger_1.ApiQuery)({ name: 'projectConfigId', required: true }),
+    (0, swagger_1.ApiQuery)({ name: 'startDate', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'endDate', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'status', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'templateName', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'tagIds', required: false, description: 'Comma-separated tag IDs' }),
+    __param(0, (0, common_1.Query)('projectConfigId')),
+    __param(1, (0, common_1.Query)('startDate')),
+    __param(2, (0, common_1.Query)('endDate')),
+    __param(3, (0, common_1.Query)('status')),
+    __param(4, (0, common_1.Query)('templateName')),
+    __param(5, (0, common_1.Query)('tagIds')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [String, String, String, String, String, String]),
     __metadata("design:returntype", Promise)
-], ReportingController.prototype, "getMessages", null);
+], ReportingController.prototype, "getBroadcastSummary", null);
 __decorate([
-    (0, common_1.Post)('sessions'),
-    (0, swagger_1.ApiOperation)({ summary: 'Session-level summary with counters' }),
-    __param(0, (0, common_1.Body)()),
+    (0, common_1.Get)('broadcasts'),
+    (0, swagger_1.ApiOperation)({ summary: 'Paginated broadcast list for reports table' }),
+    (0, swagger_1.ApiQuery)({ name: 'projectConfigId', required: true }),
+    (0, swagger_1.ApiQuery)({ name: 'startDate', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'endDate', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'status', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'templateName', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'tagIds', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'search', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'page', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'limit', required: false }),
+    __param(0, (0, common_1.Query)('projectConfigId')),
+    __param(1, (0, common_1.Query)('startDate')),
+    __param(2, (0, common_1.Query)('endDate')),
+    __param(3, (0, common_1.Query)('status')),
+    __param(4, (0, common_1.Query)('templateName')),
+    __param(5, (0, common_1.Query)('tagIds')),
+    __param(6, (0, common_1.Query)('search')),
+    __param(7, (0, common_1.Query)('page')),
+    __param(8, (0, common_1.Query)('limit')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [String, String, String, String, String, String, String, Object, Object]),
     __metadata("design:returntype", Promise)
-], ReportingController.prototype, "getSessionSummary", null);
+], ReportingController.prototype, "getBroadcastList", null);
 __decorate([
-    (0, common_1.Post)('analytics'),
-    (0, swagger_1.ApiOperation)({ summary: 'Aggregated analytics by template and date range' }),
-    __param(0, (0, common_1.Body)()),
+    (0, common_1.Get)('broadcasts/export'),
+    (0, swagger_1.ApiOperation)({ summary: 'Stream broadcast report as Excel' }),
+    (0, swagger_1.ApiQuery)({ name: 'projectConfigId', required: true }),
+    (0, swagger_1.ApiQuery)({ name: 'startDate', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'endDate', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'status', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'templateName', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'tagIds', required: false }),
+    __param(0, (0, common_1.Query)('projectConfigId')),
+    __param(1, (0, common_1.Query)('startDate')),
+    __param(2, (0, common_1.Query)('endDate')),
+    __param(3, (0, common_1.Query)('status')),
+    __param(4, (0, common_1.Query)('templateName')),
+    __param(5, (0, common_1.Query)('tagIds')),
+    __param(6, (0, common_1.Res)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [String, String, String, String, String, String, Object]),
     __metadata("design:returntype", Promise)
-], ReportingController.prototype, "getAnalytics", null);
+], ReportingController.prototype, "exportBroadcasts", null);
 __decorate([
-    (0, common_1.Post)('export'),
-    (0, swagger_1.ApiOperation)({ summary: 'Stream Excel export of messages' }),
-    __param(0, (0, common_1.Body)()),
-    __param(1, (0, common_1.Res)()),
+    (0, common_1.Get)('broadcasts/templates'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get distinct template names for filter dropdown' }),
+    (0, swagger_1.ApiQuery)({ name: 'projectConfigId', required: true }),
+    __param(0, (0, common_1.Query)('projectConfigId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
-], ReportingController.prototype, "exportExcel", null);
+], ReportingController.prototype, "getDistinctTemplates", null);
+__decorate([
+    (0, common_1.Get)('messages'),
+    (0, swagger_1.ApiOperation)({ summary: 'Paginated message-level report' }),
+    (0, swagger_1.ApiQuery)({ name: 'projectConfigId', required: true }),
+    (0, swagger_1.ApiQuery)({ name: 'startDate', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'endDate', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'status', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'broadcastId', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'templateName', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'recipientNumber', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'search', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'page', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'limit', required: false }),
+    __param(0, (0, common_1.Query)('projectConfigId')),
+    __param(1, (0, common_1.Query)('startDate')),
+    __param(2, (0, common_1.Query)('endDate')),
+    __param(3, (0, common_1.Query)('status')),
+    __param(4, (0, common_1.Query)('broadcastId')),
+    __param(5, (0, common_1.Query)('templateName')),
+    __param(6, (0, common_1.Query)('recipientNumber')),
+    __param(7, (0, common_1.Query)('search')),
+    __param(8, (0, common_1.Query)('page')),
+    __param(9, (0, common_1.Query)('limit')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String, String, String, String, String, String, Object, Object]),
+    __metadata("design:returntype", Promise)
+], ReportingController.prototype, "getMessageList", null);
+__decorate([
+    (0, common_1.Get)('messages/export'),
+    (0, swagger_1.ApiOperation)({ summary: 'Stream message-level report as Excel' }),
+    (0, swagger_1.ApiQuery)({ name: 'projectConfigId', required: true }),
+    (0, swagger_1.ApiQuery)({ name: 'startDate', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'endDate', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'status', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'broadcastId', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'templateName', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'recipientNumber', required: false }),
+    __param(0, (0, common_1.Query)('projectConfigId')),
+    __param(1, (0, common_1.Query)('startDate')),
+    __param(2, (0, common_1.Query)('endDate')),
+    __param(3, (0, common_1.Query)('status')),
+    __param(4, (0, common_1.Query)('broadcastId')),
+    __param(5, (0, common_1.Query)('templateName')),
+    __param(6, (0, common_1.Query)('recipientNumber')),
+    __param(7, (0, common_1.Res)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String, String, String, String, String, Object]),
+    __metadata("design:returntype", Promise)
+], ReportingController.prototype, "exportMessages", null);
 exports.ReportingController = ReportingController = __decorate([
     (0, swagger_1.ApiTags)('Reporting'),
     (0, swagger_1.ApiBearerAuth)(),

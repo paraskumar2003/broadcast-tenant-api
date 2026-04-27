@@ -20,6 +20,7 @@ let Broadcast = class Broadcast {
     language;
     totalRecipients;
     counters;
+    tagIds;
     status;
     scheduledAt;
     completedAt;
@@ -68,6 +69,10 @@ __decorate([
     __metadata("design:type", Object)
 ], Broadcast.prototype, "counters", void 0);
 __decorate([
+    (0, mongoose_1.Prop)({ type: [mongoose_2.Types.ObjectId], ref: 'Tag', default: [] }),
+    __metadata("design:type", Array)
+], Broadcast.prototype, "tagIds", void 0);
+__decorate([
     (0, mongoose_1.Prop)({
         type: String,
         enum: ['pending', 'processing', 'completed', 'failed'],
@@ -90,4 +95,5 @@ exports.Broadcast = Broadcast = __decorate([
 exports.BroadcastSchema = mongoose_1.SchemaFactory.createForClass(Broadcast);
 exports.BroadcastSchema.index({ projectConfigId: 1, createdAt: -1 });
 exports.BroadcastSchema.index({ projectConfigId: 1, status: 1 });
+exports.BroadcastSchema.index({ projectConfigId: 1, templateName: 1 });
 //# sourceMappingURL=broadcast.schema.js.map

@@ -4,45 +4,35 @@ import { ApiResponseDto } from '../common/dto/api-response.dto';
 export declare class ReportingController {
     private readonly reportingService;
     constructor(reportingService: ReportingService);
-    getMessages(body: {
-        date?: string;
-        number?: string;
-        sessionId?: string;
-        page?: number;
-        limit?: number;
-    }): Promise<ApiResponseDto<{
+    getBroadcastSummary(projectConfigId: string, startDate?: string, endDate?: string, status?: string, templateName?: string, tagIdsStr?: string): Promise<ApiResponseDto<{
+        totalBroadcasts: any;
+        totalRecipients: any;
+        totalSent: any;
+        totalDelivered: any;
+        totalFailed: any;
+        totalRead: any;
+        deliveryRate: number;
+        readRate: number;
+    }>>;
+    getBroadcastList(projectConfigId: string, startDate?: string, endDate?: string, status?: string, templateName?: string, tagIdsStr?: string, search?: string, page?: string, limit?: string): Promise<ApiResponseDto<{
         data: any[];
-        total: number;
-        page: number;
-        limit: number;
+        pagination: {
+            page: number;
+            limit: number;
+            total: number;
+            hasNext: boolean;
+        };
     }>>;
-    getSessionSummary(body: {
-        date?: string;
-        projectConfigId?: string;
-        page?: number;
-        limit?: number;
-    }): Promise<ApiResponseDto<{
-        data: (import("mongoose").Document<unknown, {}, import("../messaging/schemas/message-session.schema").MessageSessionDocument, {}, import("mongoose").DefaultSchemaOptions> & import("../messaging/schemas/message-session.schema").MessageSession & import("mongoose").Document<import("mongoose").Types.ObjectId, any, any, Record<string, any>, {}> & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }> & {
-            __v: number;
-        } & {
-            id: string;
-        })[];
-        total: number;
-        page: number;
-        limit: number;
+    exportBroadcasts(projectConfigId: string, startDate?: string, endDate?: string, status?: string, templateName?: string, tagIdsStr?: string, res?: Response): Promise<void>;
+    getDistinctTemplates(projectConfigId: string): Promise<ApiResponseDto<string[]>>;
+    getMessageList(projectConfigId: string, startDate?: string, endDate?: string, status?: string, broadcastId?: string, templateName?: string, recipientNumber?: string, search?: string, page?: string, limit?: string): Promise<ApiResponseDto<{
+        data: any[];
+        pagination: {
+            page: number;
+            limit: number;
+            total: number;
+            hasNext: boolean;
+        };
     }>>;
-    getAnalytics(body: {
-        startDate: string;
-        endDate: string;
-        wabaId?: string;
-        templateName?: string;
-    }): Promise<ApiResponseDto<any[]>>;
-    exportExcel(body: {
-        date: string;
-        wabaId?: string;
-        templateName?: string;
-        status?: string;
-    }, res: Response): Promise<void>;
+    exportMessages(projectConfigId: string, startDate?: string, endDate?: string, status?: string, broadcastId?: string, templateName?: string, recipientNumber?: string, res?: Response): Promise<void>;
 }
