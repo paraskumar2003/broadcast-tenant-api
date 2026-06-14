@@ -32,7 +32,7 @@ let BullmqConsumerService = BullmqConsumerService_1 = class BullmqConsumerServic
         }, {
             connection: this.connection,
             concurrency,
-            prefix: '{BULLMQ}',
+            prefix: this.configService.get('bullmq.prefix') || '{BULLMQ}',
         });
         worker.on('completed', (job) => {
             this.logger.debug(`BullMQ job ${job.id} completed on ${queueName}`);

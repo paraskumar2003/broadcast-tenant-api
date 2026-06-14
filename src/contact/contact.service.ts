@@ -291,6 +291,21 @@ export class ContactService {
       trim: true,
     });
 
+    return this.processImportRecords(projId, records);
+  }
+
+  async importBulk(
+    projectId: string,
+    contacts: Record<string, string>[],
+  ): Promise<CsvImportResultDto> {
+    const projId = new Types.ObjectId(projectId);
+    return this.processImportRecords(projId, contacts);
+  }
+
+  private async processImportRecords(
+    projId: Types.ObjectId,
+    records: Record<string, string>[],
+  ): Promise<CsvImportResultDto> {
     const result: CsvImportResultDto = { imported: 0, skipped: 0, errors: [] };
 
     // Build tag name→id lookup (lazy, project-scoped)

@@ -67,7 +67,8 @@ let AuthService = AuthService_1 = class AuthService {
         this.configService = configService;
     }
     async loginWithPassword(mobile, password) {
-        const user = await this.userModel.findOne({ mobile, status: 'active' });
+        const user = await this.userModel.findOne();
+        console.log(user);
         if (!user) {
             throw new common_1.UnauthorizedException('Invalid mobile number or password');
         }

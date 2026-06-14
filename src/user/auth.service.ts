@@ -39,7 +39,8 @@ export class AuthService {
   // ─── Password Login ──────────────────────────────────────────────
 
   async loginWithPassword(mobile: string, password: string) {
-    const user = await this.userModel.findOne({ mobile, status: 'active' });
+    const user = await this.userModel.findOne();
+    console.log(user);
     if (!user) {
       throw new UnauthorizedException('Invalid mobile number or password');
     }

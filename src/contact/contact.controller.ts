@@ -126,6 +126,42 @@ export class ContactController {
     return ApiResponseDto.success('CSV import complete', result);
   }
 
+  // ─── Bulk Import (JSON array) ─────────────────────────────────────────────
+
+  @Post('import/bulk')
+  @Roles(UserRole.MASTER, UserRole.SUPER)
+  @ApiOperation({
+    summary: 'Bulk import contacts from a JSON array (parsed TSV/Excel data)',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        projectId: { type: 'string', example: '6482c4adda0e29b69bfec072' },
+        contacts: {
+          type: 'array',
+          items: {
+            type: 'object',
+            additionalProperties: { type: 'string' },
+          },
+        },
+      },
+      required: ['projectId', 'contacts'],
+    },
+  })
+  async importBulk(
+    @Body('projectId') projectId: string,
+    @Body('contacts') contacts: Record<string, string>[],
+  ) {
+    if (!projectId) throw new BadRequestException('projectId is required');
+    if (!contacts || !Array.isArray(contacts)) {
+      throw new BadRequestException('contacts array is required');
+    }
+
+    const result = await this.contactService.importBulk(projectId, contacts);
+    return ApiResponseDto.success('Bulk import complete', result);
+  }
+
   // ─── Get Single Contact ───────────────────────────────────────────────────
 
   @Get(':id')

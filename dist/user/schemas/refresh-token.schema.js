@@ -28,7 +28,7 @@ __decorate([
     __metadata("design:type", String)
 ], RefreshToken.prototype, "token", void 0);
 __decorate([
-    (0, mongoose_1.Prop)({ type: Date, required: true, index: true }),
+    (0, mongoose_1.Prop)({ type: Date, required: true }),
     __metadata("design:type", Date)
 ], RefreshToken.prototype, "expiresAt", void 0);
 __decorate([

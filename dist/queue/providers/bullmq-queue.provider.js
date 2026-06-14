@@ -28,7 +28,7 @@ let BullmqQueueProvider = BullmqQueueProvider_1 = class BullmqQueueProvider {
         Object.values(queue_interface_1.QUEUE_NAMES).forEach((name) => {
             this.queues.set(name, new bullmq_1.Queue(name, {
                 connection,
-                prefix: '{BULLMQ}',
+                prefix: this.configService.get('bullmq.prefix') || '{BULLMQ}',
                 defaultJobOptions: {
                     attempts: 3,
                     backoff: { type: 'fixed', delay: 5000 },
@@ -43,7 +43,9 @@ let BullmqQueueProvider = BullmqQueueProvider_1 = class BullmqQueueProvider {
         const job = await queue.add(queueName, data, {
             ...(options?.delayMs ? { delay: options.delayMs } : {}),
             ...(options?.attempts ? { attempts: options.attempts } : {}),
-            ...(options?.backoffMs ? { backoff: { type: 'fixed', delay: options.backoffMs } } : {}),
+            ...(options?.backoffMs
+                ? { backoff: { type: 'fixed', delay: options.backoffMs } }
+                : {}),
         });
         this.logger.debug(`Published to ${queueName}: ${job.id}`);
         return job.id || '';

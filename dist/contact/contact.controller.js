@@ -58,6 +58,15 @@ let ContactController = class ContactController {
         const result = await this.contactService.importFromCsv(projectId, file.buffer);
         return api_response_dto_1.ApiResponseDto.success('CSV import complete', result);
     }
+    async importBulk(projectId, contacts) {
+        if (!projectId)
+            throw new common_1.BadRequestException('projectId is required');
+        if (!contacts || !Array.isArray(contacts)) {
+            throw new common_1.BadRequestException('contacts array is required');
+        }
+        const result = await this.contactService.importBulk(projectId, contacts);
+        return api_response_dto_1.ApiResponseDto.success('Bulk import complete', result);
+    }
     async getById(id) {
         const data = await this.contactService.findById(id);
         return api_response_dto_1.ApiResponseDto.success('Contact fetched', data);
@@ -140,6 +149,34 @@ __decorate([
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], ContactController.prototype, "importCsv", null);
+__decorate([
+    (0, common_1.Post)('import/bulk'),
+    (0, roles_decorator_1.Roles)(user_schema_1.UserRole.MASTER, user_schema_1.UserRole.SUPER),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Bulk import contacts from a JSON array (parsed TSV/Excel data)',
+    }),
+    (0, swagger_1.ApiBody)({
+        schema: {
+            type: 'object',
+            properties: {
+                projectId: { type: 'string', example: '6482c4adda0e29b69bfec072' },
+                contacts: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        additionalProperties: { type: 'string' },
+                    },
+                },
+            },
+            required: ['projectId', 'contacts'],
+        },
+    }),
+    __param(0, (0, common_1.Body)('projectId')),
+    __param(1, (0, common_1.Body)('contacts')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Array]),
+    __metadata("design:returntype", Promise)
+], ContactController.prototype, "importBulk", null);
 __decorate([
     (0, common_1.Get)(':id'),
     (0, swagger_1.ApiOperation)({ summary: 'Get a single contact by ID (with attached tags)' }),

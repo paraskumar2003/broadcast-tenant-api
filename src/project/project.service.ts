@@ -12,15 +12,19 @@ import { ProjectConfigurationDto } from './dto/project-configuration.dto';
 @Injectable()
 export class ProjectService {
   constructor(
-    @InjectModel(Project.name) private readonly projectModel: Model<ProjectDocument>,
+    @InjectModel(Project.name)
+    private readonly projectModel: Model<ProjectDocument>,
     @InjectModel(ProjectConfiguration.name)
     private readonly configModel: Model<ProjectConfigurationDocument>,
-  ) { }
+  ) {}
 
   // --- Project CRUD ---
 
   async createProject(name: string, slug: string, createdBy?: string) {
-    const existing = await this.projectModel.findOne({ slug, status: 'active' });
+    const existing = await this.projectModel.findOne({
+      slug,
+      status: 'active',
+    });
     if (existing) {
       throw new Error('Project with this slug already exists');
     }
@@ -58,7 +62,10 @@ export class ProjectService {
 
     if (user.role === UserRole.EXECUTIVE) {
       // Executive sees only granted projects
-      if (!user.accessibleProjectIds || user.accessibleProjectIds.length === 0) {
+      if (
+        !user.accessibleProjectIds ||
+        user.accessibleProjectIds.length === 0
+      ) {
         return [];
       }
       return this.projectModel
@@ -76,14 +83,15 @@ export class ProjectService {
   // --- ProjectConfiguration CRUD ---
 
   async createConfiguration(data: ProjectConfigurationDto) {
-
     /** a project must exist with the projectId */
     const project = await this.projectModel.findById(data.projectId);
     if (!project) {
       throw new Error('Project not found');
     }
 
-    const existing = await this.configModel.findOne({ projectId: data.projectId });
+    const existing = await this.configModel.findOne({
+      projectId: data.projectId,
+    });
     if (existing) {
       throw new Error('Project configuration already exists');
     }
@@ -99,7 +107,6 @@ export class ProjectService {
   }
 
   async updateConfiguration(id: string, data: ProjectConfigurationDto) {
-
     /** a configuration must exist with the id */
     const config = await this.configModel.findById(id);
     if (!config) {
@@ -115,25 +122,32 @@ export class ProjectService {
     return config.save();
   }
 
-  async getConfigurationById(id: string): Promise<ProjectConfigurationDocument> {
+  async getConfigurationById(
+    id: string,
+  ): Promise<ProjectConfigurationDocument> {
     const project = await this.projectModel.findById(id);
     if (!project) throw new NotFoundException('Project not found');
 
-    let config = await this.configModel.findOne({ projectId: project._id })
+    let config = await this.configModel.findOne({ projectId: project._id });
     if (!config) throw new NotFoundException('Project configuration not found');
     return config;
   }
 
-  async getConfigurationByProjectId(projectId: string): Promise<ProjectConfigurationDocument> {
+  async getConfigurationByProjectId(
+    projectId: string,
+  ): Promise<ProjectConfigurationDocument> {
     const config = await this.configModel.findOne({
       projectId: new Types.ObjectId(projectId),
       status: 'active',
     });
-    if (!config) throw new NotFoundException('Active project configuration not found');
+    if (!config)
+      throw new NotFoundException('Active project configuration not found');
     return config;
   }
 
-  async getConfigurationByWabaId(wabaId: string): Promise<ProjectConfigurationDocument | null> {
+  async getConfigurationByWabaId(
+    wabaId: string,
+  ): Promise<ProjectConfigurationDocument | null> {
     return this.configModel.findOne({
       whatsappBusinessAccountId: wabaId,
       status: 'active',
@@ -141,7 +155,10 @@ export class ProjectService {
   }
 
   async listConfigurations() {
-    return this.configModel.find({ status: 'active' }).sort({ createdAt: -1 }).populate('projectId');
+    return this.configModel
+      .find({ status: 'active' })
+      .sort({ createdAt: -1 })
+      .populate('projectId');
   }
 
   async deleteConfiguration(id: string) {

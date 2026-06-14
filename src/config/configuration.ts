@@ -40,6 +40,10 @@ export default () => ({
     port: parseInt(process.env.REDIS_PORT ?? '6379', 10),
   },
 
+  bullmq: {
+    prefix: process.env.BULLMQ_PREFIX || '{BULLMQ}',
+  },
+
   webhook: {
     verifyToken: process.env.WEBHOOK_VERIFY_TOKEN,
   },

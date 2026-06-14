@@ -63,7 +63,7 @@ __decorate([
     __metadata("design:type", String)
 ], Message.prototype, "recipientNumber", void 0);
 __decorate([
-    (0, mongoose_1.Prop)({ index: true, sparse: true, unique: true }),
+    (0, mongoose_1.Prop)(),
     __metadata("design:type", String)
 ], Message.prototype, "metaMessageId", void 0);
 __decorate([

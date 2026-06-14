@@ -32,7 +32,7 @@ export class Message {
   @Prop({ required: true, index: true })
   recipientNumber: string;
 
-  @Prop({ index: true, sparse: true, unique: true })
+  @Prop()
   metaMessageId: string;
 
   @Prop({ type: String, default: null })

@@ -29,7 +29,7 @@ export class BullmqConsumerService implements IQueueConsumer, OnModuleDestroy {
       {
         connection: this.connection,
         concurrency,
-        prefix: '{BULLMQ}',
+        prefix: this.configService.get('bullmq.prefix') || '{BULLMQ}',
       },
     );
 

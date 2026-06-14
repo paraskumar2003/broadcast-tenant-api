@@ -27,7 +27,10 @@ let ProjectService = class ProjectService {
         this.configModel = configModel;
     }
     async createProject(name, slug, createdBy) {
-        const existing = await this.projectModel.findOne({ slug, status: 'active' });
+        const existing = await this.projectModel.findOne({
+            slug,
+            status: 'active',
+        });
         if (existing) {
             throw new Error('Project with this slug already exists');
         }
@@ -48,7 +51,8 @@ let ProjectService = class ProjectService {
                 .sort({ createdAt: -1 });
         }
         if (user.role === user_schema_1.UserRole.EXECUTIVE) {
-            if (!user.accessibleProjectIds || user.accessibleProjectIds.length === 0) {
+            if (!user.accessibleProjectIds ||
+                user.accessibleProjectIds.length === 0) {
                 return [];
             }
             return this.projectModel
@@ -65,7 +69,9 @@ let ProjectService = class ProjectService {
         if (!project) {
             throw new Error('Project not found');
         }
-        const existing = await this.configModel.findOne({ projectId: data.projectId });
+        const existing = await this.configModel.findOne({
+            projectId: data.projectId,
+        });
         if (existing) {
             throw new Error('Project configuration already exists');
         }
@@ -116,7 +122,10 @@ let ProjectService = class ProjectService {
         });
     }
     async listConfigurations() {
-        return this.configModel.find({ status: 'active' }).sort({ createdAt: -1 }).populate('projectId');
+        return this.configModel
+            .find({ status: 'active' })
+            .sort({ createdAt: -1 })
+            .populate('projectId');
     }
     async deleteConfiguration(id) {
         return this.configModel.findByIdAndUpdate(id, { status: 'inactive' });

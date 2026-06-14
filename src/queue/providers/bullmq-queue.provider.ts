@@ -1,7 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
-import type { IQueueService, QueueJobOptions, QueueJobData } from '../queue.interface';
+import type {
+  IQueueService,
+  QueueJobOptions,
+  QueueJobData,
+} from '../queue.interface';
 import { QUEUE_NAMES } from '../queue.interface';
 
 @Injectable()
@@ -21,7 +25,7 @@ export class BullmqQueueProvider implements IQueueService {
         name,
         new Queue(name, {
           connection,
-          prefix: '{BULLMQ}',
+          prefix: this.configService.get('bullmq.prefix') || '{BULLMQ}',
           defaultJobOptions: {
             attempts: 3,
             backoff: { type: 'fixed', delay: 5000 },
@@ -33,20 +37,29 @@ export class BullmqQueueProvider implements IQueueService {
     });
   }
 
-  async publish<T = any>(queueName: string, data: T, options?: QueueJobOptions): Promise<string> {
+  async publish<T = any>(
+    queueName: string,
+    data: T,
+    options?: QueueJobOptions,
+  ): Promise<string> {
     const queue = this.getQueue(queueName);
 
     const job = await queue.add(queueName, data, {
       ...(options?.delayMs ? { delay: options.delayMs } : {}),
       ...(options?.attempts ? { attempts: options.attempts } : {}),
-      ...(options?.backoffMs ? { backoff: { type: 'fixed', delay: options.backoffMs } } : {}),
+      ...(options?.backoffMs
+        ? { backoff: { type: 'fixed', delay: options.backoffMs } }
+        : {}),
     });
 
     this.logger.debug(`Published to ${queueName}: ${job.id}`);
     return job.id || '';
   }
 
-  async publishBulk<T = any>(queueName: string, items: QueueJobData<T>[]): Promise<string[]> {
+  async publishBulk<T = any>(
+    queueName: string,
+    items: QueueJobData<T>[],
+  ): Promise<string[]> {
     const queue = this.getQueue(queueName);
 
     const jobs = items.map((item) => ({

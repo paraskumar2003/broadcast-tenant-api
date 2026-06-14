@@ -214,6 +214,13 @@ let ContactService = class ContactService {
             skip_empty_lines: true,
             trim: true,
         });
+        return this.processImportRecords(projId, records);
+    }
+    async importBulk(projectId, contacts) {
+        const projId = new mongoose_2.Types.ObjectId(projectId);
+        return this.processImportRecords(projId, contacts);
+    }
+    async processImportRecords(projId, records) {
         const result = { imported: 0, skipped: 0, errors: [] };
         const tagCache = new Map();
         const getTagId = async (name) => {

@@ -33,6 +33,9 @@ declare const _default: () => {
         host: string;
         port: number;
     };
+    bullmq: {
+        prefix: string;
+    };
     webhook: {
         verifyToken: string | undefined;
     };

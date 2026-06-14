@@ -94,6 +94,8 @@ export declare class ContactService {
         };
     }>;
     importFromCsv(projectId: string, fileBuffer: Buffer): Promise<CsvImportResultDto>;
+    importBulk(projectId: string, contacts: Record<string, string>[]): Promise<CsvImportResultDto>;
+    private processImportRecords;
     getSampleCsvBuffer(): Buffer;
     private attachTagsToContact;
     private extractMetadata;

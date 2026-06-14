@@ -41,6 +41,7 @@ export declare class ContactController {
     }>>;
     downloadSampleCsv(res: Response): Promise<void>;
     importCsv(file: Express.Multer.File, projectId: string): Promise<ApiResponseDto<import("./dto/contact.dto").CsvImportResultDto>>;
+    importBulk(projectId: string, contacts: Record<string, string>[]): Promise<ApiResponseDto<import("./dto/contact.dto").CsvImportResultDto>>;
     getById(id: string): Promise<ApiResponseDto<{
         tags: import("mongoose").Types.ObjectId[];
         projectId: import("mongoose").Types.ObjectId;
