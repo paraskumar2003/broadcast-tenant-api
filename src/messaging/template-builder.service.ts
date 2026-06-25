@@ -24,7 +24,7 @@ export class TemplateBuilderService {
           this.buildHeader(element, params, components);
           break;
         case 'BODY':
-          this.buildBody(params, components);
+          this.buildBody(element, params, components);
           break;
         case 'CAROUSEL':
           this.buildCarousel(element, components);
@@ -47,6 +47,17 @@ export class TemplateBuilderService {
     let headerParameter: any;
 
     switch (element.format) {
+      case 'TEXT':
+        // Static text header has no parameters unless it contains placeholders.
+        if (!element.text?.includes('{{')) {
+          return;
+        }
+
+        headerParameter = {
+          type: 'text',
+          text: String(params.header ?? ''),
+        };
+        break;
       case 'VIDEO':
         headerParameter = {
           type: 'video',
@@ -75,10 +86,17 @@ export class TemplateBuilderService {
   }
 
   private buildBody(
+    element: any,
     params: Record<string, any>,
     components: TemplateComponent[],
   ): void {
     const bodyParameters: any[] = [];
+
+    const hasVariables = /\{\{\d+\}\}/.test(element.text);
+
+    if (!hasVariables) {
+      return;
+    }
 
     // Extract numbered parameters (1, 2, 3...) as body text parameters
     Object.keys(params)

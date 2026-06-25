@@ -49,6 +49,8 @@ let MetaApiService = MetaApiService_1 = class MetaApiService {
             type: 'text',
             text: { body: text },
         };
+        console.log(payload);
+        console.log(url);
         return this.postMessage(url, accessToken, payload, recipientNumber);
     }
     async sendMediaMessage(phoneNumberId, accessToken, recipientNumber, mediaType, mediaUrl, caption, fileName) {

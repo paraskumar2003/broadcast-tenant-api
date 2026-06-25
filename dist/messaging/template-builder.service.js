@@ -19,7 +19,7 @@ let TemplateBuilderService = TemplateBuilderService_1 = class TemplateBuilderSer
                     this.buildHeader(element, params, components);
                     break;
                 case 'BODY':
-                    this.buildBody(params, components);
+                    this.buildBody(element, params, components);
                     break;
                 case 'CAROUSEL':
                     this.buildCarousel(element, components);
@@ -34,6 +34,15 @@ let TemplateBuilderService = TemplateBuilderService_1 = class TemplateBuilderSer
     buildHeader(element, params, components) {
         let headerParameter;
         switch (element.format) {
+            case 'TEXT':
+                if (!element.text?.includes('{{')) {
+                    return;
+                }
+                headerParameter = {
+                    type: 'text',
+                    text: String(params.header ?? ''),
+                };
+                break;
             case 'VIDEO':
                 headerParameter = {
                     type: 'video',
@@ -59,8 +68,12 @@ let TemplateBuilderService = TemplateBuilderService_1 = class TemplateBuilderSer
             parameters: [headerParameter],
         });
     }
-    buildBody(params, components) {
+    buildBody(element, params, components) {
         const bodyParameters = [];
+        const hasVariables = /\{\{\d+\}\}/.test(element.text);
+        if (!hasVariables) {
+            return;
+        }
         Object.keys(params)
             .filter((key) => Number.isInteger(parseInt(key)))
             .sort((a, b) => parseInt(a) - parseInt(b))

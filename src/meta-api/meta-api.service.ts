@@ -76,6 +76,9 @@ export class MetaApiService {
       text: { body: text },
     };
 
+    console.log(payload);
+    console.log(url);
+
     return this.postMessage(url, accessToken, payload, recipientNumber);
   }
 
