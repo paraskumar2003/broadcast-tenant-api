@@ -102,6 +102,7 @@ export class ProjectService {
       phoneNumber: data.phoneNumber,
       accessToken: data.accessToken,
       logo: data.logo,
+      metaAppId: data.metaAppId,
     });
     return config.save();
   }
@@ -119,6 +120,7 @@ export class ProjectService {
     config.phoneNumber = data.phoneNumber;
     config.accessToken = data.accessToken;
     config.logo = data.logo;
+    config.metaAppId = data.metaAppId;
     return config.save();
   }
 

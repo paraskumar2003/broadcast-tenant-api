@@ -7,6 +7,7 @@ export declare class ProjectConfiguration {
     phoneNumber: string;
     accessToken: string;
     logo: string;
+    metaAppId?: string;
     status: string;
 }
 export declare const ProjectConfigurationSchema: import("mongoose").Schema<ProjectConfiguration, import("mongoose").Model<ProjectConfiguration, any, any, any, (Document<unknown, any, ProjectConfiguration, any, import("mongoose").DefaultSchemaOptions> & ProjectConfiguration & {
@@ -74,6 +75,15 @@ export declare const ProjectConfigurationSchema: import("mongoose").Schema<Proje
         id: string;
     }> | undefined;
     logo?: import("mongoose").SchemaDefinitionProperty<string, ProjectConfiguration, Document<unknown, {}, ProjectConfiguration, {
+        id: string;
+    }, import("mongoose").DefaultSchemaOptions> & Omit<ProjectConfiguration & {
+        _id: Types.ObjectId;
+    } & {
+        __v: number;
+    }, "id"> & {
+        id: string;
+    }> | undefined;
+    metaAppId?: import("mongoose").SchemaDefinitionProperty<string | undefined, ProjectConfiguration, Document<unknown, {}, ProjectConfiguration, {
         id: string;
     }, import("mongoose").DefaultSchemaOptions> & Omit<ProjectConfiguration & {
         _id: Types.ObjectId;

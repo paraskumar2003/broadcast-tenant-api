@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { HttpModule } from '@nestjs/axios';
 import { MulterModule } from '@nestjs/platform-express';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -10,6 +11,8 @@ import { UploadController } from './upload.controller';
 import { MediaController } from './media.controller';
 import { Media, MediaSchema } from './schemas/media.schema';
 import { TaggingModule } from '../tagging/tagging.module';
+import { MetaApiModule } from '../meta-api/meta-api.module';
+import { ProjectModule } from '../project/project.module';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const multerS3 = require('multer-s3');
@@ -53,6 +56,9 @@ export const MULTER_OPTIONS = 'MULTER_OPTIONS';
             },
         }),
         TaggingModule,
+        MetaApiModule,
+        ProjectModule,
+        HttpModule.register({ timeout: 30000, maxRedirects: 3 }),
     ],
     providers: [
         S3Service,

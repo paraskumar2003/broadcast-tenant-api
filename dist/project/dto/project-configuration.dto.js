@@ -19,6 +19,7 @@ class ProjectConfigurationDto {
     phoneNumber;
     accessToken;
     logo;
+    metaAppId;
 }
 exports.ProjectConfigurationDto = ProjectConfigurationDto;
 __decorate([
@@ -57,4 +58,13 @@ __decorate([
     (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
 ], ProjectConfigurationDto.prototype, "logo", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        example: '1234567890123456',
+        description: 'Meta App ID (from developers.facebook.com) — required to generate template header media handles via the Resumable Upload API.',
+    }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], ProjectConfigurationDto.prototype, "metaAppId", void 0);
 //# sourceMappingURL=project-configuration.dto.js.map

@@ -2,7 +2,6 @@ import { Document, Types } from 'mongoose';
 export type MediaDocument = Media & Document;
 export declare class Media {
     projectId: Types.ObjectId;
-    url: string;
     key: string;
     filename: string;
     contentType: string;
@@ -31,15 +30,6 @@ export declare const MediaSchema: import("mongoose").Schema<Media, import("mongo
     id: string;
 }, {
     projectId?: import("mongoose").SchemaDefinitionProperty<Types.ObjectId, Media, Document<unknown, {}, Media, {
-        id: string;
-    }, import("mongoose").DefaultSchemaOptions> & Omit<Media & {
-        _id: Types.ObjectId;
-    } & {
-        __v: number;
-    }, "id"> & {
-        id: string;
-    }> | undefined;
-    url?: import("mongoose").SchemaDefinitionProperty<string, Media, Document<unknown, {}, Media, {
         id: string;
     }, import("mongoose").DefaultSchemaOptions> & Omit<Media & {
         _id: Types.ObjectId;

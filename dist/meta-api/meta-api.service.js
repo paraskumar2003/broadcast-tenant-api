@@ -110,6 +110,36 @@ let MetaApiService = MetaApiService_1 = class MetaApiService {
             throw new common_1.HttpException(`Failed to fetch template: ${error.response?.data?.error?.message || error.message}`, common_1.HttpStatus.BAD_GATEWAY);
         }
     }
+    async uploadMediaForHandle(appId, accessToken, fileBuffer, contentType) {
+        const startUrl = `${this.baseUrl}/${this.apiVersion}/${appId}/uploads?file_length=${fileBuffer.length}&file_type=${encodeURIComponent(contentType)}&access_token=${accessToken}`;
+        let uploadSessionId;
+        try {
+            const { data } = await (0, rxjs_1.firstValueFrom)(this.httpService.post(startUrl));
+            uploadSessionId = data.id;
+        }
+        catch (error) {
+            const errMsg = error.response?.data?.error?.message || error.message;
+            this.logger.error(`Failed to start resumable upload session: ${errMsg}`);
+            throw new common_1.HttpException(`Failed to start media upload: ${errMsg}`, error.response?.status || common_1.HttpStatus.BAD_GATEWAY);
+        }
+        try {
+            const { data } = await (0, rxjs_1.firstValueFrom)(this.httpService.post(`${this.baseUrl}/${this.apiVersion}/${uploadSessionId}`, fileBuffer, {
+                headers: {
+                    Authorization: `OAuth ${accessToken}`,
+                    file_offset: '0',
+                    'Content-Type': 'application/octet-stream',
+                },
+                maxBodyLength: Infinity,
+                maxContentLength: Infinity,
+            }));
+            return data.h;
+        }
+        catch (error) {
+            const errMsg = error.response?.data?.error?.message || error.message;
+            this.logger.error(`Failed to upload media bytes: ${errMsg}`);
+            throw new common_1.HttpException(`Failed to upload media: ${errMsg}`, error.response?.status || common_1.HttpStatus.BAD_GATEWAY);
+        }
+    }
     async postMessage(url, accessToken, payload, recipientNumber) {
         try {
             const { data } = await (0, rxjs_1.firstValueFrom)(this.httpService.post(url, payload, {

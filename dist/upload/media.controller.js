@@ -14,7 +14,6 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MediaController = void 0;
 const common_1 = require("@nestjs/common");
-const platform_express_1 = require("@nestjs/platform-express");
 const swagger_1 = require("@nestjs/swagger");
 const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
 const roles_guard_1 = require("../common/guards/roles.guard");
@@ -28,43 +27,27 @@ let MediaController = class MediaController {
     constructor(mediaService) {
         this.mediaService = mediaService;
     }
-    async uploadSingle(file, body) {
-        if (!file)
-            throw new common_1.BadRequestException('No file provided');
-        const media = await this.mediaService.create({
-            projectId: body.projectId,
-            url: file.location,
-            key: file.key,
-            filename: file.originalname,
-            contentType: file.contentType || file.mimetype,
-            size: file.size,
-            alt: body.alt,
-            mediaType: body.mediaType,
-        });
-        return api_response_dto_1.ApiResponseDto.success('Media uploaded', media);
+    async presign(dto) {
+        const data = await this.mediaService.presignUpload(dto.projectId, dto.filename, dto.contentType);
+        return api_response_dto_1.ApiResponseDto.success('Presigned upload URL generated', data);
     }
-    async uploadMultiple(files, body) {
-        if (!files || files.length === 0)
-            throw new common_1.BadRequestException('No files provided');
-        const items = files.map((f) => ({
-            projectId: body.projectId,
-            url: f.location,
-            key: f.key,
-            filename: f.originalname,
-            contentType: f.contentType || f.mimetype,
-            size: f.size,
-            alt: body.alt,
-            mediaType: body.mediaType,
-        }));
-        const media = await this.mediaService.createMany(items);
-        return api_response_dto_1.ApiResponseDto.success('Media uploaded', media);
+    async confirm(dto) {
+        const data = await this.mediaService.confirmUpload(dto);
+        return api_response_dto_1.ApiResponseDto.success('Media uploaded', data);
     }
     async listByProject(projectId) {
         const data = await this.mediaService.listByProject(projectId);
         return api_response_dto_1.ApiResponseDto.success('Media gallery fetched', data);
     }
+    async getMetaHandle(dto) {
+        const data = await this.mediaService.generateMetaHandle(dto.projectId, {
+            mediaId: dto.mediaId,
+            url: dto.url,
+        });
+        return api_response_dto_1.ApiResponseDto.success('Meta media handle generated', data);
+    }
     async getById(id) {
-        const data = await this.mediaService.getById(id);
+        const data = await this.mediaService.getByIdWithUrl(id);
         return api_response_dto_1.ApiResponseDto.success('Media fetched', data);
     }
     async update(id, dto) {
@@ -78,56 +61,23 @@ let MediaController = class MediaController {
 };
 exports.MediaController = MediaController;
 __decorate([
-    (0, common_1.Post)('upload'),
+    (0, common_1.Post)('presign'),
     (0, roles_decorator_1.Roles)(user_schema_1.UserRole.MASTER, user_schema_1.UserRole.SUPER),
-    (0, swagger_1.ApiOperation)({ summary: 'Upload a single file and add to project gallery' }),
-    (0, swagger_1.ApiConsumes)('multipart/form-data'),
-    (0, swagger_1.ApiBody)({
-        schema: {
-            type: 'object',
-            properties: {
-                file: { type: 'string', format: 'binary' },
-                projectId: { type: 'string', example: '6482c4adda0e29b69bfec072' },
-                alt: { type: 'string', example: 'Campaign banner' },
-                mediaType: {
-                    type: 'string',
-                    enum: ['image', 'video', 'document', 'other'],
-                },
-            },
-            required: ['file', 'projectId'],
-        },
-    }),
-    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
-    __param(0, (0, common_1.UploadedFile)()),
-    __param(1, (0, common_1.Body)()),
+    (0, swagger_1.ApiOperation)({ summary: 'Get a short-lived URL to upload a file directly to S3 (private bucket)' }),
+    __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, media_dto_1.CreateMediaDto]),
+    __metadata("design:paramtypes", [media_dto_1.PresignMediaDto]),
     __metadata("design:returntype", Promise)
-], MediaController.prototype, "uploadSingle", null);
+], MediaController.prototype, "presign", null);
 __decorate([
-    (0, common_1.Post)('upload/multiple'),
+    (0, common_1.Post)('confirm'),
     (0, roles_decorator_1.Roles)(user_schema_1.UserRole.MASTER, user_schema_1.UserRole.SUPER),
-    (0, swagger_1.ApiOperation)({
-        summary: 'Upload multiple files and add to project gallery (max 10)',
-    }),
-    (0, swagger_1.ApiConsumes)('multipart/form-data'),
-    (0, swagger_1.ApiBody)({
-        schema: {
-            type: 'object',
-            properties: {
-                files: { type: 'array', items: { type: 'string', format: 'binary' } },
-                projectId: { type: 'string', example: '6482c4adda0e29b69bfec072' },
-            },
-            required: ['files', 'projectId'],
-        },
-    }),
-    (0, common_1.UseInterceptors)((0, platform_express_1.FilesInterceptor)('files', 10)),
-    __param(0, (0, common_1.UploadedFiles)()),
-    __param(1, (0, common_1.Body)()),
+    (0, swagger_1.ApiOperation)({ summary: 'Confirm a direct S3 upload and add it to the project gallery' }),
+    __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Array, media_dto_1.CreateMediaDto]),
+    __metadata("design:paramtypes", [media_dto_1.ConfirmMediaDto]),
     __metadata("design:returntype", Promise)
-], MediaController.prototype, "uploadMultiple", null);
+], MediaController.prototype, "confirm", null);
 __decorate([
     (0, common_1.Get)('project/:projectId'),
     (0, swagger_1.ApiOperation)({ summary: 'List all media for a project (gallery)' }),
@@ -136,6 +86,17 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], MediaController.prototype, "listByProject", null);
+__decorate([
+    (0, common_1.Post)('meta-handle'),
+    (0, roles_decorator_1.Roles)(user_schema_1.UserRole.MASTER, user_schema_1.UserRole.SUPER),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Upload media to Meta via the Resumable Upload API and return a header handle usable in template example.header_handle',
+    }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [media_dto_1.MetaHandleDto]),
+    __metadata("design:returntype", Promise)
+], MediaController.prototype, "getMetaHandle", null);
 __decorate([
     (0, common_1.Get)(':id'),
     (0, swagger_1.ApiOperation)({ summary: 'Get a single media item by ID' }),

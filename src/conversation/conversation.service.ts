@@ -261,6 +261,13 @@ export class ConversationService {
     const projId = new Types.ObjectId(projectId);
     const skip = (page - 1) * limit;
 
+    // Nothing proactively flips 'open' -> 'closed' when the 24h window
+    // lapses (only a fresh inbound message does), so sync it on read.
+    await this.conversationModel.updateMany(
+      { projectId: projId, status: 'open', conversationWindowExpiresAt: { $lte: new Date() } },
+      { $set: { status: 'closed' } },
+    );
+
     const filter: Record<string, any> = { projectId: projId };
     if (status) filter.status = status;
 
@@ -287,6 +294,16 @@ export class ConversationService {
       .findById(id)
       .populate('contactId', 'name mobile metadata');
     if (!conversation) throw new NotFoundException('Conversation not found');
+
+    if (
+      conversation.status === 'open' &&
+      conversation.conversationWindowExpiresAt &&
+      conversation.conversationWindowExpiresAt <= new Date()
+    ) {
+      conversation.status = 'closed';
+      await conversation.save();
+    }
+
     return conversation;
   }
 

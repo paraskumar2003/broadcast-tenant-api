@@ -154,6 +154,7 @@ let ConversationService = ConversationService_1 = class ConversationService {
     async listConversations(projectId, page = 1, limit = 20, status) {
         const projId = new mongoose_2.Types.ObjectId(projectId);
         const skip = (page - 1) * limit;
+        await this.conversationModel.updateMany({ projectId: projId, status: 'open', conversationWindowExpiresAt: { $lte: new Date() } }, { $set: { status: 'closed' } });
         const filter = { projectId: projId };
         if (status)
             filter.status = status;
@@ -177,6 +178,12 @@ let ConversationService = ConversationService_1 = class ConversationService {
             .populate('contactId', 'name mobile metadata');
         if (!conversation)
             throw new common_1.NotFoundException('Conversation not found');
+        if (conversation.status === 'open' &&
+            conversation.conversationWindowExpiresAt &&
+            conversation.conversationWindowExpiresAt <= new Date()) {
+            conversation.status = 'closed';
+            await conversation.save();
+        }
         return conversation;
     }
     async getMessages(conversationId, page = 1, limit = 50) {

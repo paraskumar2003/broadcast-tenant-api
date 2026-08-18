@@ -23,6 +23,9 @@ export class ProjectConfiguration {
   @Prop({ trim: true })
   logo: string;
 
+  @Prop({ trim: true })
+  metaAppId?: string;
+
   @Prop({ type: String, enum: ['active', 'inactive'], default: 'active' })
   status: string;
 }

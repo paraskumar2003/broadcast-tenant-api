@@ -8,9 +8,9 @@ export class Media {
     @Prop({ type: Types.ObjectId, ref: 'Project', required: true, index: true })
     projectId: Types.ObjectId;
 
-    @Prop({ required: true })
-    url: string;
-
+    // The bucket is private — no permanent URL is stored. Display/download
+    // URLs are minted on read as short-lived presigned GET URLs (see
+    // MediaService.attachUrl).
     @Prop({ required: true })
     key: string;
 

@@ -192,6 +192,62 @@ export class MetaApiService {
     }
   }
 
+  /**
+   * Upload a media buffer via Meta's Resumable Upload API and return the
+   * resulting header handle, required for `example.header_handle` when
+   * creating a template with an IMAGE/VIDEO/DOCUMENT header.
+   *
+   * Flow: POST /{app-id}/uploads to start a session, then POST the file
+   * bytes to the returned session id to get back a handle (`h`).
+   */
+  async uploadMediaForHandle(
+    appId: string,
+    accessToken: string,
+    fileBuffer: Buffer,
+    contentType: string,
+  ): Promise<string> {
+    const startUrl = `${this.baseUrl}/${this.apiVersion}/${appId}/uploads?file_length=${fileBuffer.length}&file_type=${encodeURIComponent(contentType)}&access_token=${accessToken}`;
+
+    let uploadSessionId: string;
+    try {
+      const { data } = await firstValueFrom(this.httpService.post(startUrl));
+      uploadSessionId = data.id;
+    } catch (error: any) {
+      const errMsg = error.response?.data?.error?.message || error.message;
+      this.logger.error(`Failed to start resumable upload session: ${errMsg}`);
+      throw new HttpException(
+        `Failed to start media upload: ${errMsg}`,
+        error.response?.status || HttpStatus.BAD_GATEWAY,
+      );
+    }
+
+    try {
+      const { data } = await firstValueFrom(
+        this.httpService.post(
+          `${this.baseUrl}/${this.apiVersion}/${uploadSessionId}`,
+          fileBuffer,
+          {
+            headers: {
+              Authorization: `OAuth ${accessToken}`,
+              file_offset: '0',
+              'Content-Type': 'application/octet-stream',
+            },
+            maxBodyLength: Infinity,
+            maxContentLength: Infinity,
+          },
+        ),
+      );
+      return data.h;
+    } catch (error: any) {
+      const errMsg = error.response?.data?.error?.message || error.message;
+      this.logger.error(`Failed to upload media bytes: ${errMsg}`);
+      throw new HttpException(
+        `Failed to upload media: ${errMsg}`,
+        error.response?.status || HttpStatus.BAD_GATEWAY,
+      );
+    }
+  }
+
   private async postMessage(
     url: string,
     accessToken: string,

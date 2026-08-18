@@ -5,4 +5,5 @@ export declare class ProjectConfigurationDto {
     phoneNumber: string;
     accessToken: string;
     logo: string;
+    metaAppId?: string;
 }

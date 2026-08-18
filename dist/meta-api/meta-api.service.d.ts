@@ -31,5 +31,6 @@ export declare class MetaApiService {
     fetchTemplates(wabaId: string, accessToken: string): Promise<any[]>;
     createTemplate(wabaId: string, accessToken: string, payload: any): Promise<any>;
     fetchTemplateById(templateId: string, accessToken: string): Promise<any>;
+    uploadMediaForHandle(appId: string, accessToken: string, fileBuffer: Buffer, contentType: string): Promise<string>;
     private postMessage;
 }

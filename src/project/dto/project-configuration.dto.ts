@@ -1,5 +1,5 @@
-import { ApiProperty } from "@nestjs/swagger";
-import { IsNotEmpty, IsString } from "class-validator";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { IsNotEmpty, IsOptional, IsString } from "class-validator";
 
 export class ProjectConfigurationDto {
     @ApiProperty({ example: '6482c4adda0e29b69bfec072' })
@@ -31,4 +31,13 @@ export class ProjectConfigurationDto {
     @IsString()
     @IsNotEmpty()
     logo: string;
+
+    @ApiPropertyOptional({
+        example: '1234567890123456',
+        description:
+            'Meta App ID (from developers.facebook.com) — required to generate template header media handles via the Resumable Upload API.',
+    })
+    @IsString()
+    @IsOptional()
+    metaAppId?: string;
 }

@@ -8,6 +8,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UploadModule = exports.MULTER_OPTIONS = void 0;
 const common_1 = require("@nestjs/common");
+const axios_1 = require("@nestjs/axios");
 const platform_express_1 = require("@nestjs/platform-express");
 const mongoose_1 = require("@nestjs/mongoose");
 const config_1 = require("@nestjs/config");
@@ -19,6 +20,8 @@ const upload_controller_1 = require("./upload.controller");
 const media_controller_1 = require("./media.controller");
 const media_schema_1 = require("./schemas/media.schema");
 const tagging_module_1 = require("../tagging/tagging.module");
+const meta_api_module_1 = require("../meta-api/meta-api.module");
+const project_module_1 = require("../project/project.module");
 const multerS3 = require('multer-s3');
 exports.MULTER_OPTIONS = 'MULTER_OPTIONS';
 let UploadModule = class UploadModule {
@@ -61,6 +64,9 @@ exports.UploadModule = UploadModule = __decorate([
                 },
             }),
             tagging_module_1.TaggingModule,
+            meta_api_module_1.MetaApiModule,
+            project_module_1.ProjectModule,
+            axios_1.HttpModule.register({ timeout: 30000, maxRedirects: 3 }),
         ],
         providers: [
             s3_service_1.S3Service,

@@ -19,6 +19,7 @@ let ProjectConfiguration = class ProjectConfiguration {
     phoneNumber;
     accessToken;
     logo;
+    metaAppId;
     status;
 };
 exports.ProjectConfiguration = ProjectConfiguration;
@@ -46,6 +47,10 @@ __decorate([
     (0, mongoose_1.Prop)({ trim: true }),
     __metadata("design:type", String)
 ], ProjectConfiguration.prototype, "logo", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ trim: true }),
+    __metadata("design:type", String)
+], ProjectConfiguration.prototype, "metaAppId", void 0);
 __decorate([
     (0, mongoose_1.Prop)({ type: String, enum: ['active', 'inactive'], default: 'active' }),
     __metadata("design:type", String)
