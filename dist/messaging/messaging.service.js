@@ -251,7 +251,7 @@ let MessagingService = MessagingService_1 = class MessagingService {
         return { status: true, message: 'Text message queued' };
     }
     async sendBulkCsv(opts) {
-        const { fileBuffer, projectConfigId, template, language, scheduledAt, skipBroadcast, broadcastName, variableMapping, } = opts;
+        const { fileBuffer, projectConfigId, template, language, scheduledAt, skipBroadcast, broadcastName, variableMapping, staticParams, } = opts;
         const projId = new mongoose_2.Types.ObjectId(projectConfigId);
         const records = (0, sync_1.parse)(fileBuffer, {
             columns: true,
@@ -343,7 +343,7 @@ let MessagingService = MessagingService_1 = class MessagingService {
                 }
             }
             if (!recipientMap.has(mobile)) {
-                const params = {};
+                const params = { ...staticParams };
                 if (variableMapping && Object.keys(variableMapping).length > 0) {
                     for (const [position, columnName] of Object.entries(variableMapping)) {
                         const matchedHeader = rawHeaders.find((h) => h.toLowerCase().trim() === columnName.toLowerCase().trim());

@@ -58,6 +58,7 @@ export declare class MessagingService {
         skipBroadcast?: boolean;
         broadcastName?: string;
         variableMapping?: Record<string, string>;
+        staticParams?: Record<string, string>;
     }): Promise<{
         sessionId: Types.ObjectId;
         totalQueued: number;

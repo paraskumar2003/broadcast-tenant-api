@@ -44,12 +44,18 @@ let TemplateBuilderService = TemplateBuilderService_1 = class TemplateBuilderSer
                 };
                 break;
             case 'VIDEO':
+                if (!params.image) {
+                    throw new common_1.BadRequestException('This template has a video header — a video URL (params.image) is required to send it.');
+                }
                 headerParameter = {
                     type: 'video',
                     video: { link: params.image },
                 };
                 break;
             case 'DOCUMENT':
+                if (!params.image) {
+                    throw new common_1.BadRequestException('This template has a document header — a document URL (params.image) is required to send it.');
+                }
                 headerParameter = {
                     type: 'document',
                     document: { link: params.image, filename: 'Document' },
@@ -57,6 +63,9 @@ let TemplateBuilderService = TemplateBuilderService_1 = class TemplateBuilderSer
                 break;
             case 'IMAGE':
             default:
+                if (!params.image) {
+                    throw new common_1.BadRequestException('This template has an image header — an image URL (params.image) is required to send it.');
+                }
                 headerParameter = {
                     type: 'image',
                     image: { link: params.image },

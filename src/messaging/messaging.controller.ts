@@ -93,6 +93,11 @@ export class MessagingController {
           description:
             'JSON mapping of template variable positions to CSV column names, e.g. {"1":"name","2":"order_id"}',
         },
+        staticParams: {
+          type: 'string',
+          description:
+            'JSON of fixed params applied to every row, e.g. {"image":"https://.../banner.jpg"} for a media header — use when the value is the same for all recipients rather than coming from a CSV column',
+        },
       },
       required: ['file', 'projectConfigId', 'template'],
     },
@@ -107,6 +112,7 @@ export class MessagingController {
     @Body('skipBroadcast') skipBroadcast?: string,
     @Body('broadcastName') broadcastName?: string,
     @Body('variableMapping') variableMappingStr?: string,
+    @Body('staticParams') staticParamsStr?: string,
   ) {
     if (!file) throw new BadRequestException('No CSV file provided');
     if (!projectConfigId)
@@ -133,6 +139,15 @@ export class MessagingController {
       }
     }
 
+    let staticParams: Record<string, string> | undefined;
+    if (staticParamsStr) {
+      try {
+        staticParams = JSON.parse(staticParamsStr);
+      } catch {
+        throw new BadRequestException('staticParams must be valid JSON');
+      }
+    }
+
     const data = await this.messagingService.sendBulkCsv({
       fileBuffer: file.buffer,
       projectConfigId,
@@ -142,6 +157,7 @@ export class MessagingController {
       skipBroadcast: skipBroadcast === 'true',
       broadcastName,
       variableMapping,
+      staticParams,
     });
 
     return ApiResponseDto.success('CSV broadcast queued', data);

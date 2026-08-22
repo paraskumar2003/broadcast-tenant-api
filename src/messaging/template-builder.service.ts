@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { TemplateComponent } from '../meta-api/meta-api.service';
 
 /**
@@ -59,12 +59,22 @@ export class TemplateBuilderService {
         };
         break;
       case 'VIDEO':
+        if (!params.image) {
+          throw new BadRequestException(
+            'This template has a video header — a video URL (params.image) is required to send it.',
+          );
+        }
         headerParameter = {
           type: 'video',
           video: { link: params.image },
         };
         break;
       case 'DOCUMENT':
+        if (!params.image) {
+          throw new BadRequestException(
+            'This template has a document header — a document URL (params.image) is required to send it.',
+          );
+        }
         headerParameter = {
           type: 'document',
           document: { link: params.image, filename: 'Document' },
@@ -72,6 +82,11 @@ export class TemplateBuilderService {
         break;
       case 'IMAGE':
       default:
+        if (!params.image) {
+          throw new BadRequestException(
+            'This template has an image header — an image URL (params.image) is required to send it.',
+          );
+        }
         headerParameter = {
           type: 'image',
           image: { link: params.image },

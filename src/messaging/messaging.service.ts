@@ -360,6 +360,7 @@ export class MessagingService {
     skipBroadcast?: boolean;
     broadcastName?: string;
     variableMapping?: Record<string, string>;
+    staticParams?: Record<string, string>;
   }) {
     const {
       fileBuffer,
@@ -370,6 +371,7 @@ export class MessagingService {
       skipBroadcast,
       broadcastName,
       variableMapping,
+      staticParams,
     } = opts;
     const projId = new Types.ObjectId(projectConfigId);
 
@@ -490,7 +492,7 @@ export class MessagingService {
 
       // Collect recipient — use variableMapping to build positional params
       if (!recipientMap.has(mobile)) {
-        const params: Record<string, string> = {};
+        const params: Record<string, string> = { ...staticParams };
 
         if (variableMapping && Object.keys(variableMapping).length > 0) {
           // variableMapping: { "1": "name", "2": "order_id", ... }

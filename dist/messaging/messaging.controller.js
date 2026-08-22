@@ -34,7 +34,7 @@ let MessagingController = class MessagingController {
         const data = await this.messagingService.sendBulk(dto);
         return api_response_dto_1.ApiResponseDto.success('Bulk messages queued successfully', data);
     }
-    async sendBulkCsv(file, projectConfigId, templateStr, language, scheduledAt, skipBroadcast, broadcastName, variableMappingStr) {
+    async sendBulkCsv(file, projectConfigId, templateStr, language, scheduledAt, skipBroadcast, broadcastName, variableMappingStr, staticParamsStr) {
         if (!file)
             throw new common_1.BadRequestException('No CSV file provided');
         if (!projectConfigId)
@@ -60,6 +60,15 @@ let MessagingController = class MessagingController {
                 throw new common_1.BadRequestException('variableMapping must be valid JSON');
             }
         }
+        let staticParams;
+        if (staticParamsStr) {
+            try {
+                staticParams = JSON.parse(staticParamsStr);
+            }
+            catch {
+                throw new common_1.BadRequestException('staticParams must be valid JSON');
+            }
+        }
         const data = await this.messagingService.sendBulkCsv({
             fileBuffer: file.buffer,
             projectConfigId,
@@ -69,6 +78,7 @@ let MessagingController = class MessagingController {
             skipBroadcast: skipBroadcast === 'true',
             broadcastName,
             variableMapping,
+            staticParams,
         });
         return api_response_dto_1.ApiResponseDto.success('CSV broadcast queued', data);
     }
@@ -140,6 +150,10 @@ __decorate([
                     type: 'string',
                     description: 'JSON mapping of template variable positions to CSV column names, e.g. {"1":"name","2":"order_id"}',
                 },
+                staticParams: {
+                    type: 'string',
+                    description: 'JSON of fixed params applied to every row, e.g. {"image":"https://.../banner.jpg"} for a media header — use when the value is the same for all recipients rather than coming from a CSV column',
+                },
             },
             required: ['file', 'projectConfigId', 'template'],
         },
@@ -153,8 +167,9 @@ __decorate([
     __param(5, (0, common_1.Body)('skipBroadcast')),
     __param(6, (0, common_1.Body)('broadcastName')),
     __param(7, (0, common_1.Body)('variableMapping')),
+    __param(8, (0, common_1.Body)('staticParams')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, String, String, String, String, String, String]),
+    __metadata("design:paramtypes", [Object, String, String, String, String, String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], MessagingController.prototype, "sendBulkCsv", null);
 __decorate([
